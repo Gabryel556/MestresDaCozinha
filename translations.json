@@ -1,0 +1,30 @@
+{
+    "pt": {
+        "site_title": "Mestres da Cozinha",
+        "nav_home": "Início",
+        "nav_shop": "Loja",
+        "nav_community": "Comunidade",
+        "nav_login": "Entrar",
+        "nav_register": "Criar Conta",
+        "welcome_title": "A Batalha Culinária Definitiva Começou!",
+        "welcome_subtitle": "Crie sua conta hoje e prepare-se para o lançamento. Mostre que você é o verdadeiro Mestre da Cozinha.",
+        "download_button_cta": "Baixar o Jogo Agora!",
+        "download_button_soon": "Lançamento em Breve",
+        "shop_title": "Loja de Cosméticos",
+        "shop_description": "Personalize seu chef com trajes e utensílios exclusivos."
+    },
+    "en": {
+        "site_title": "Masters of the Kitchen",
+        "nav_home": "Home",
+        "nav_shop": "Shop",
+        "nav_community": "Community",
+        "nav_login": "Login",
+        "nav_register": "Create Account",
+        "welcome_title": "The Ultimate Culinary Battle Has Begun!",
+        "welcome_subtitle": "Create your account today and get ready for launch. Prove that you are the true Master of the Kitchen.",
+        "download_button_cta": "Download The Game Now!",
+        "download_button_soon": "Coming Soon",
+        "shop_title": "Cosmetics Shop",
+        "shop_description": "Customize your chef with exclusive outfits and utensils."
+    }
+}

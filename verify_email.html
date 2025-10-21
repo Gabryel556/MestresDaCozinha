@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Verificando Email...</title>
+    <link rel="stylesheet" href="style.css"> <style> body { padding: 3rem; text-align: center; } </style>
+</head>
+<body>
+    <div class="content-card" style="max-width: 600px; margin: auto;">
+        <h1>Verificando seu Email</h1>
+        <p id="verification-message">Aguarde...</p>
+        <a href="/" class="secondary-button" style="margin-top: 1rem;">Voltar ao Início</a>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
+        const messageElement = document.getElementById('verification-message');
+
+        async function verifyToken() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+
+            if (!token) {
+                messageElement.textContent = "Erro: Token não encontrado na URL.";
+                messageElement.style.color = 'red';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/verify?token=${token}`);
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || `Erro ${response.status}`);
+                }
+
+                messageElement.textContent = result.message;
+                messageElement.style.color = '#4caf50';
+
+            } catch (error) {
+                console.error("Erro na verificação:", error);
+                messageElement.textContent = `Erro: ${error.message}`;
+                messageElement.style.color = 'red';
+            }
+        }
+
+        verifyToken();
+    </script>
+</body>
+</html>

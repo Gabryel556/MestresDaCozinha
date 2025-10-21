@@ -21,7 +21,14 @@ async function performLogin(username, password) {
         updateLoginStatus(); closeModal('login-modal'); closeModal('register-modal');
         document.getElementById('login-form')?.reset(); document.getElementById('register-form')?.reset();
         startInactivityTimer();
-    } catch (error) { console.error("Erro Login:", error); alert(`Erro ao entrar: ${error.message}`); }
+    } catch (error) { 
+        console.error("Erro Login:", error); 
+        if (error.message && error.message.toLowerCase().includes("verifique seu email")) {
+             alert(`Erro ao entrar: ${error.message}`);
+        } else {
+             alert(`Erro ao entrar: ${error.message || 'Verifique usuário/senha ou conexão.'}`);
+        }
+    }
 }
 
 async function performRegister(username, email, password) {
@@ -73,7 +80,6 @@ async function loadProfileData() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || `Erro ${response.status}`);
 
-        // Preenche os campos do perfil (como antes)
         document.getElementById('profile-username').textContent = data.username;
         document.getElementById('profile-email').textContent = data.email;
         document.getElementById('profile-currency').textContent = data.in_game_currency;
@@ -82,19 +88,14 @@ async function loadProfileData() {
         document.getElementById('profile-created').textContent = new Date(data.created_at).toLocaleDateString();
         document.getElementById('edit-email').value = data.email; 
 
-        // ---- LÓGICA DE VISIBILIDADE DO VÍNCULO ----
         if (data.discord_id) { 
-            // Se discord_id existe e não é nulo/vazio, mostra o status
             discordLinkedStatus?.classList.remove('hidden');
-            linkDiscordForm?.classList.add('hidden'); // Garante que form esteja escondido
+            linkDiscordForm?.classList.add('hidden');
         } else {
-            // Se não tem discord_id, mostra o formulário
             linkDiscordForm?.classList.remove('hidden');
-            discordLinkedStatus?.classList.add('hidden'); // Garante que status esteja escondido
+            discordLinkedStatus?.classList.add('hidden');
         }
-        // ------------------------------------------
 
-        // Mostra o conteúdo do perfil
         contentDiv?.classList.remove('hidden'); 
         loadingDiv?.classList.add('hidden');
 
@@ -103,7 +104,6 @@ async function loadProfileData() {
         if(errorDiv) errorDiv.textContent = `Erro ao carregar dados: ${error.message}`; 
         errorDiv?.classList.remove('hidden');
         loadingDiv?.classList.add('hidden');
-        // Desloga se o token for inválido
         if (response && response.status === 401 || error.message.toLowerCase().includes("token")) {
              console.log("Token inválido/expirado detectado. Deslogando.");
              logout();
@@ -123,7 +123,7 @@ async function updateProfileData(newEmail) {
          const result = await response.json();
          if (!response.ok) throw new Error(result.detail || 'Erro desconhecido ao atualizar');
          alert("Email atualizado com sucesso!"); closeModal('edit-profile-modal');
-         loadProfileData(); // Recarrega os dados do perfil para mostrar o novo email
+         loadProfileData();
      } catch (error) { console.error("Erro ao atualizar perfil:", error); alert(`Erro ao salvar: ${error.message}`); }
 }
 
@@ -132,19 +132,18 @@ async function loadRanking() {
     if (!tableBody) { console.error("Elemento #ranking-table-body não encontrado."); return; } 
     tableBody.innerHTML = '<tr><td colspan="3">Carregando ranking...</td></tr>';
     try {
-        const response = await fetch(`${API_URL}/ranking`); // Endpoint público
+        const response = await fetch(`${API_URL}/ranking`);
         if (!response.ok) { 
             const errorData = await response.json().catch(() => ({detail: `Erro HTTP ${response.status}`}));
             throw new Error(errorData.detail || `Erro ${response.status}`);
         }
         const ranking = await response.json();
         
-        tableBody.innerHTML = ''; // Limpa antes de preencher
+        tableBody.innerHTML = '';
         if (ranking.length === 0) { tableBody.innerHTML = '<tr><td colspan="3">Ninguém no ranking ainda.</td></tr>'; return; }
         
         ranking.forEach((player, index) => {
             const row = tableBody.insertRow();
-            // Adiciona células com os dados
             row.insertCell().textContent = `#${index + 1}`;
             row.insertCell().textContent = player.username;
             row.insertCell().textContent = player.total_score;
@@ -157,11 +156,10 @@ async function loadRanking() {
 
 async function loadShopItems() {
     document.querySelectorAll('.shop-items-grid').forEach(grid => grid.innerHTML = '<p>Carregando itens...</p>');
-    let hasLoadError = false; // Flag para evitar múltiplas mensagens de erro
+    let hasLoadError = false;
     try {
-        // Busca itens internos (cash) da tabela 'items'
         if (allShopItems.length === 0) {
-            const internalResponse = await fetch(`${API_URL}/shop/items?item_type=premium`); // Pede só premium
+            const internalResponse = await fetch(`${API_URL}/shop/items?item_type=premium`);
             if (!internalResponse.ok) { 
                  hasLoadError = true; 
                  const err = await internalResponse.json().catch(() => ({detail:''}));
@@ -169,7 +167,6 @@ async function loadShopItems() {
             }
             allShopItems = await internalResponse.json(); 
         }
-        // Busca itens Stripe (recarga/vip)
         if (stripeProducts.length === 0) {
              const stripeResponse = await fetch(`${API_URL}/shop/stripe-products`);
              if (!stripeResponse.ok) { 
@@ -179,19 +176,18 @@ async function loadShopItems() {
              }
              stripeProducts = await stripeResponse.json();
         }
-        renderShopItems(); // Renderiza tudo se ambas as buscas funcionarem
+        renderShopItems();
     } catch (error) {
         console.error("Erro ao carregar itens da loja:", error);
-        // Mostra o erro apenas uma vez, mesmo se ambas as buscas falharem
          if(!document.querySelector('.shop-items-grid p')?.textContent.includes('Erro:')) {
             document.querySelectorAll('.shop-items-grid').forEach(grid => grid.innerHTML = `<p style="color: red;">Erro ao carregar produtos: ${error.message}</p>`);
          }
     }
 }
 
-async function handleBuyClick(event) { // Para Stripe (Recarga/VIP)
+async function handleBuyClick(event) {
     const button = event.target;
-    const priceId = button.dataset.itemId; // O ID do preço do Stripe
+    const priceId = button.dataset.itemId;
     const token = localStorage.getItem("jwt_token");
     if (!token) { alert("Você precisa estar logado para comprar!"); openModal('login-modal'); return; }
     
@@ -204,23 +200,19 @@ async function handleBuyClick(event) { // Para Stripe (Recarga/VIP)
         });
         const session = await response.json();
         if (!response.ok) throw new Error(session.detail || 'Falha ao iniciar checkout');
-        // Redireciona o usuário para a página de checkout hospedada pelo Stripe
         window.location.href = session.checkout_url; 
     } catch (error) {
         console.error("Erro checkout Stripe:", error); alert(`Erro ao iniciar pagamento: ${error.message}`);
         button.disabled = false; 
-        // Encontra o tipo original para restaurar o texto do botão
         const originalItem = stripeProducts.find(p => p.price_id === priceId);
         button.textContent = originalItem?.type === 'recurring' ? 'Assinar' : 'Comprar';
     }
 }
 
-// (Adicione esta função e REMOVA handleBuyWithCashClick)
 async function handleBuyInternalClick(event) {
     const button = event.target;
     const itemId = parseInt(button.dataset.itemId); 
-    const itemName = button.dataset.itemName; 
-    // Determina a moeda pelo botão clicado
+    const itemName = button.dataset.itemName;
     const currencyType = button.classList.contains('buy-normal') ? 'normal' : 'premium'; 
     const token = localStorage.getItem("jwt_token");
 
@@ -229,20 +221,19 @@ async function handleBuyInternalClick(event) {
 
     button.disabled = true; button.textContent = 'Processando...';
     try {
-        const response = await fetch(`${API_URL}/shop/buy_internal_item`, { // Chama o endpoint unificado
+        const response = await fetch(`${API_URL}/shop/buy_internal_item`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY },
-            body: JSON.stringify({ itemId: itemId, currencyType: currencyType }) // Envia ID e tipo de moeda
+            body: JSON.stringify({ itemId: itemId, currencyType: currencyType })
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail || 'Falha na compra');
         alert(result.message); 
-        loadProfileData(); // Recarrega perfil para atualizar saldo
+        loadProfileData();
     } catch (error) { console.error(`Erro compra ${currencyType}:`, error); alert(`Erro: ${error.message}`); } 
     finally { 
         button.disabled = false; 
-        button.textContent = button.textContent = `Comprar (${currencyType === 'normal' ? itemPriceNormalText : itemPricePremiumText})`; // Precisa buscar o preço original aqui
-        // TODO: Melhorar restauração do texto do botão
+        button.textContent = button.textContent = `Comprar (${currencyType === 'normal' ? itemPriceNormalText : itemPricePremiumText})`;
     }
 }
 
@@ -333,15 +324,14 @@ function renderShopItems() {
 
 function setupBuyButtons() {
     document.querySelectorAll('.buy-button').forEach(button => {
-        const buttonClone = button.cloneNode(true); // Clona para limpar listeners
+        const buttonClone = button.cloneNode(true);
         button.parentNode.replaceChild(buttonClone, button);
 
-        // Adiciona listener correto
-        if (buttonClone.classList.contains('buy-stripe')) { // Botões Stripe (Recarga/VIP)
+        if (buttonClone.classList.contains('buy-stripe')) {
             buttonClone.addEventListener('click', handleBuyClick); 
-        } else if (buttonClone.classList.contains('buy-normal')) { // Botão Moeda Normal
+        } else if (buttonClone.classList.contains('buy-normal')) {
             buttonClone.addEventListener('click', handleBuyInternalClick); 
-        } else if (buttonClone.classList.contains('buy-premium')) { // Botão Cash Premium
+        } else if (buttonClone.classList.contains('buy-premium')) {
              buttonClone.addEventListener('click', handleBuyInternalClick); 
         }
     });
@@ -353,11 +343,10 @@ function createCategoryGrid(categoryId) {
     if (!container) { console.warn(`Container #category-${categoryId} não encontrado.`); return null; } 
     let grid = document.getElementById(`${categoryId}-items`);
     if (!grid) {
-        // Cria o H2 apenas se a categoria não for recarga ou vip (que já têm no HTML)
         if (categoryId !== 'recarga' && categoryId !== 'vip') {
              container.innerHTML = `<h2>${categoryId.charAt(0).toUpperCase() + categoryId.slice(1)}</h2>`; 
         } else {
-             container.innerHTML = ''; // Limpa o "Carregando..."
+             container.innerHTML = '';
         }
         grid = document.createElement('div'); grid.className = 'shop-items-grid'; grid.id = `${categoryId}-items`;
         container.appendChild(grid);
@@ -383,7 +372,6 @@ function showPage(pageId) {
         if (link.getAttribute('data-page') === pageId) link.classList.add('active');
     });
 
-    // Carrega dados se a página ficou ativa
     if (targetPage?.classList.contains('active')) {
         if (pageId === 'ranking') loadRanking();
         else if (pageId === 'profile') loadProfileData();
@@ -412,20 +400,16 @@ function startInactivityTimer() {
         console.log("Inatividade! Deslogando..."); alert("Sua sessão expirou por inatividade."); logout();
     }, INACTIVITY_TIMEOUT_MS);
 }
-function resetInactivityTimer() { if (localStorage.getItem("jwt_token")) startInactivityTimer(); } // Só reinicia se estiver logado
+function resetInactivityTimer() { if (localStorage.getItem("jwt_token")) startInactivityTimer(); }
 
-/* ================================================== */
-/* TRADUÇÃO E BOTÃO DE DOWNLOAD           */
-/* ================================================== */
 async function loadTranslations() {
     try {
         const response = await fetch('translations.json');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         translations = await response.json();
-        applyTranslations(); // Aplica traduções após carregar
+        applyTranslations();
     } catch (error) { 
         console.error('Erro ao carregar traduções:', error); 
-        // Tenta aplicar com o que tiver (pode ser vazio ou de cache antigo)
         applyTranslations(); 
     }
 }
@@ -435,17 +419,15 @@ function applyTranslations() {
         const key = el.getAttribute('data-translate');
         const translatedText = translations[currentLanguage]?.[key];
         
-        // Se for um span dentro de um link de nav, aplica no span
         const targetElement = el.tagName === 'A' && el.querySelector('span[data-translate]') ? el.querySelector('span[data-translate]') : el;
         const targetKey = targetElement.getAttribute('data-translate');
 
         if (translations[currentLanguage]?.[targetKey]) {
             targetElement.textContent = translations[currentLanguage][targetKey];
-        } else if (translations['pt']?.[targetKey]) { // Fallback para PT
+        } else if (translations['pt']?.[targetKey]) {
              targetElement.textContent = translations['pt'][targetKey]; 
         } else {
-             // Mantém o texto original se não achar tradução nem fallback
-             // targetElement.textContent = targetKey; // Descomente se quiser mostrar a chave
+             // targetElement.textContent = targetKey;
         }
     });
     updateDownloadButton(); 
@@ -453,7 +435,7 @@ function applyTranslations() {
 
 
 function changeLanguage(lang) {
-    if (['pt', 'en'].includes(lang)) { // Valida o idioma
+    if (['pt', 'en'].includes(lang)) {
         currentLanguage = lang;
         document.documentElement.lang = lang; 
         applyTranslations(); 
@@ -469,8 +451,7 @@ function updateDownloadButton() {
     if (jogoLancado) {
         btn.textContent = translations[currentLanguage]?.[keyCTA] || 'Download Now!';
         btn.classList.add('active'); btn.classList.remove('disabled'); btn.disabled = false;
-        // !! SUBSTITUA '#' PELO SEU LINK DE DOWNLOAD REAL !!
-        btn.onclick = () => window.location.href = '#'; 
+        btn.onclick = () => window.location.href = 'https://drive.google.com/drive/folders/1ZllnIiZQWxJx0vuItNVlyK1ZStI6ifVU?usp=sharing'; 
     } else {
         btn.textContent = translations[currentLanguage]?.[keySoon] || 'Coming Soon';
         btn.classList.add('disabled'); btn.classList.remove('active'); btn.disabled = true;

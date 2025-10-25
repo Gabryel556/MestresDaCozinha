@@ -17,26 +17,43 @@
                 <a href="#" class="secondary-button" data-modal-target="login-modal" data-translate="nav_login">Entrar</a>
                 <a href="#" class="register-btn" data-modal-target="register-modal" data-translate="nav_register">Criar Conta</a>
             </div>
-            <div id="auth-logged-in" class="sidebar-auth hidden"> <div class="user-profile">
+            <div id="auth-logged-in" class="sidebar-auth hidden">
+                <div class="user-profile">
                     <i class="fa-solid fa-user-circle"></i>
-                    <span id="user-profile-name">Carregando...</span>
+                    <span id="user-profile-name" data-translate="sidebar_loading">Carregando...</span>
                 </div>
-                <a href="#" id="logout-btn" class="logout-button">Sair <i class="fa-solid fa-sign-out-alt"></i></a>
+                
+                <div class="user-wallet">
+                    <div class="wallet-item">
+                        <span><i class="fa-solid fa-coins"></i> <span data-translate="sidebar_coins">Moedas:</span></span>
+                        <span id="sidebar-currency">-</span>
+                    </div>
+                    <div class="wallet-item">
+                        <span><i class="fa-solid fa-gem"></i> <span data-translate="sidebar_cash">Cash:</span></span>
+                        <span id="sidebar-premium">-</span>
+                    </div>
+                </div>
+                <a href="#" id="logout-btn" class="logout-button"><span data-translate="sidebar_logout">Sair</span> <i class="fa-solid fa-sign-out-alt"></i></a>
             </div>
             
             <nav class="sidebar-nav">
                 <a href="#" class="active" data-page="inicio"><i class="fa-solid fa-house"></i> <span data-translate="nav_home">Início</span></a>
-                <a href="#" data-page="profile" id="nav-profile-link" class="hidden"><i class="fa-solid fa-user-cog"></i> <span>Meu Perfil</span></a>
+                <a href="#" data-page="profile" id="nav-profile-link" class="hidden"><i class="fa-solid fa-user-cog"></i> <span data-translate="nav_profile">Meu Perfil</span></a>
                 <a href="#" data-page="loja"><i class="fa-solid fa-store"></i> <span data-translate="nav_shop">Loja</span></a>
-                <a href="#" data-page="ranking"><i class="fa-solid fa-trophy"></i> <span>Ranking</span></a>
+                <a href="#" data-page="ranking"><i class="fa-solid fa-trophy"></i> <span data-translate="nav_ranking">Ranking</span></a>
                 <a href="#" data-page="comunidade"><i class="fa-solid fa-users"></i> <span data-translate="nav_community">Comunidade</span></a>
             </nav>
         </div>
         <div class="sidebar-bottom">
             <div class="language-switcher">
-                <button data-lang="pt">PT</button>
-                <span>|</span>
-                <button data-lang="en">EN</button>
+                <select id="lang-selector">
+                    <option value="pt">Português</option>
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="es">Español</option>
+                    <option value="de">Deutsch</option>
+                    <option value="it">Italiano</option>
+                </select>
             </div>
         </div>
     </aside>
@@ -45,41 +62,61 @@
         <div id="page-inicio" class="page active">
             <section class="hero-section">
                 <div class="content-card">
-                    <img src="Imagens/MTFeioKkkkk.png" alt="Mestres da Cozinha Logo" class="hero-logo"> <h1 data-translate="welcome_title">A Batalha Culinária Definitiva Começou!</h1>
+                    <img src="Imagens/MTFeioKkkkk.png" alt="Mestres da Cozinha Logo" class="hero-logo">
+                    <h1 data-translate="welcome_title">A Batalha Culinária Definitiva Começou!</h1>
                     <p data-translate="welcome_subtitle">Crie sua conta hoje e prepare-se para o lançamento. Mostre que você é o verdadeiro Mestre da Cozinha.</p>
-                    <button id="download-btn" class="download-button"></button> </div>
+                    <button id="download-btn" class="download-button"></button>
+                </div>
             </section>
         </div>
 
         <div id="page-profile" class="page">
             <div class="content-card">
-                <h1>Meu Perfil</h1>
-                <div id="profile-info-loading">Carregando seus dados...</div>
+                <h1 data-translate="profile_title">Meu Perfil</h1>
+                <div id="profile-info-loading" data-translate="profile_loading">Carregando seus dados...</div>
                 <div id="profile-info-content" class="hidden"> 
-                    <p><strong>Username:</strong> <span id="profile-username"></span></p>
-                    <p><strong>Email:</strong> <span id="profile-email"></span></p>
-                    <p><strong>Moedas do Jogo:</strong> <span id="profile-currency"></span></p>
-                    <p><strong>Cash Premium:</strong> <span id="profile-premium"></span></p>
-                    <p><strong>Pontuação Total:</strong> <span id="profile-score"></span></p>
-                    <p><strong>Membro desde:</strong> <span id="profile-created"></span></p>
-                    <button class="register-btn" data-modal-target="edit-profile-modal" style="margin-top: 1.5rem;">Editar Email</button>
-                    <hr style="border-color: #444; margin: 2rem 0;">
-                    <h3>Vincular Conta Discord</h3>
-                    <div id="discord-linked-status" class="hidden" style="margin-top: 2rem; padding: 1rem; background-color: #2a2a2a; border-left: 4px solid #4caf50; border-radius: 4px;">
-                        <p style="color: #4caf50; font-weight: bold;"><i class="fa-brands fa-discord"></i> Conta Discord Vinculada!</p>
-                        <p style="font-size: 0.9rem; color: var(--text-secondary);">Sua conta do jogo está conectada à sua conta Discord. Você pode usar comandos do bot.</p>
-                        </div>
-                    <hr style="border-color: #444; margin: 2rem 0;">
+                    <p><strong data-translate="profile_username">Username:</strong> <span id="profile-username"></span></p>
+                    <p><strong data-translate="profile_email">Email:</strong> <span id="profile-email"></span></p>
+                    <p><strong data-translate="profile_coins">Moedas do Jogo:</strong> <span id="profile-currency"></span></p>
+                    <p><strong data-translate="profile_cash">Cash Premium:</strong> <span id="profile-premium"></span></p>
+                    <p><strong data-translate="profile_score">Pontuação Total:</strong> <span id="profile-score"></span></p>
+                    <p><strong data-translate="profile_matches">Total de Partidas:</strong> <span id="profile-matches">0</span></p>
+                    <p><strong data-translate="profile_wins">Total de Vitórias:</strong> <span id="profile-wins">0</span></p>
+                    <p><strong data-translate="profile_winrate">Taxa de Vitória (W/L):</strong> <span id="profile-winrate">0%</span></p>
+                    <p><strong data-translate="profile_created_at">Membro desde:</strong> <span id="profile-created"></span></p>
+                    <button class="register-btn" data-modal-target="edit-profile-modal" style="margin-top: 1.5rem;" data-translate="profile_edit_email">Editar Email</button>
+                    <button class="secondary-button" data-modal-target="change-pass-modal" style="margin-top: 1.5rem; margin-left: 0.5rem;" data-translate="profile_change_pass">Alterar Senha</button>
+
+                    <hr class="section-divider">
+                    <h2 data-translate="profile_security_title">Segurança da Conta</h2>
+                    <div id="security-2fa-status">
+                         <p><span data-translate="profile_2fa_status">Autenticação de Dois Fatores (2FA):</span> <strong id="2fa-status-text" data-translate="profile_2fa_status_checking">Carregando...</strong></p>
+                         <button id="btn-enable-2fa" class="secondary-button hidden" style="margin-top: 1rem;" data-translate="profile_2fa_enable">Ativar 2FA</button>
+                         <button id="btn-disable-2fa" class="delete-btn hidden" style="margin-top: 1rem;" data-translate="profile_2fa_disable">Desativar 2FA</button>
+                    </div>
+
+                    <hr class="section-divider">
+                    <h3 data-translate="profile_discord_title">Vincular Conta Discord</h3>
+                    <div id="discord-linked-status" class="hidden discord-status-box linked">
+                        <p><i class="fa-brands fa-discord"></i> <span data-translate="profile_discord_linked">Conta Discord Vinculada!</span></p>
+                        <small data-translate="profile_discord_linked_desc">Sua conta do jogo está conectada.</small>
+                    </div>
                     <form id="link-discord-form">
-                        <p style="font-size: 0.9rem; margin-bottom: 1rem;">Use o comando `/link username_jogo:SEU_USER` no nosso Discord para gerar um código e insira-o abaixo.</p>
+                        <p class="form-instruction" data-translate="profile_discord_link_instruction">Use o comando /link no nosso Discord e preencha a opção username_jogo com seu nome de usuário exato no jogo para gerar um código. Insira-o abaixo (expira em 5 min).</p>
                         <div class="form-group">
-                            <label for="link-code">Código de Vinculação</label>
+                            <label for="link-code" data-translate="profile_discord_link_code_label">Código de Vinculação</label>
                             <input type="text" id="link-code" style="text-transform:uppercase;" maxlength="6" required placeholder="ABC123">
                         </div>
-                        <button type="submit" class="register-btn">Confirmar Vinculação</button>
+                        <button type="submit" class="register-btn" data-translate="profile_discord_confirm">Confirmar Vinculação</button>
                     </form>
+
+                    <hr class="section-divider">
+                    <h2 data-translate="profile_inventory_title">Meu Inventário</h2>
+                    <div id="profile-inventory-grid" class="shop-items-grid">
+                        <p data-translate="profile_inventory_loading">Carregando inventário...</p>
+                    </div>
                 </div>
-                <div id="profile-info-error" class="hidden" style="color: red;"></div>
+                <div id="profile-info-error" class="hidden error-message"></div>
             </div>
         </div>
         
@@ -87,32 +124,40 @@
             <div class="content-card">
                 <h1 data-translate="nav_shop">Loja</h1>
                 <nav class="shop-categories">
-                    <button class="shop-category-btn active" data-category="recarga">Recarga de Cash</button>
-                    <button class="shop-category-btn" data-category="vip">Assinaturas VIP</button>
-                    <button class="shop-category-btn" data-category="skin">Skins</button>
-                    <button class="shop-category-btn" data-category="pet">Pets</button>
-                    </nav>
+                    <button class="shop-category-btn active" data-category="recarga" data-translate="shop_recharge">Recarga</button>
+                    <button class="shop-category-btn" data-category="vip" data-translate="shop_vip">VIP</button>
+                    <button class="shop-category-btn" data-category="skin" data-translate="shop_skins">Skins</button>
+                    <button class="shop-category-btn" data-category="pet" data-translate="shop_pets">Pets</button>
+                </nav>
                 <div id="shop-items-container">
                     <div id="category-recarga" class="shop-category-content active">
-                        <h2>Recarga de Cash</h2> <div class="shop-items-grid" id="recarga-items"><p>Carregando...</p></div>
+                        <h2 data-translate="shop_recharge_title">Recarga de Cash</h2>
+                        <div class="shop-items-grid" id="recarga-items"><p data-translate="shop_loading">Carregando...</p></div>
                     </div>
                     <div id="category-vip" class="shop-category-content">
-                        <h2>Assinaturas VIP</h2> <div class="shop-items-grid" id="vip-items"><p>Carregando...</p></div>
+                        <h2 data-translate="shop_vip_title">Assinaturas VIP</h2>
+                        <div class="shop-items-grid" id="vip-items"><p data-translate="shop_loading">Carregando...</p></div>
                     </div>
-                    <div id="category-skin" class="shop-category-content">
-                        </div>
-                     <div id="category-pet" class="shop-category-content">
-                         </div>
-                     </div>
+                    <div id="category-skin" class="shop-category-content"></div>
+                    <div id="category-pet" class="shop-category-content"></div>
+                </div>
             </div>
         </div>
         
         <div id="page-ranking" class="page"> 
              <div class="content-card"> 
-                 <h1>Ranking</h1> 
+                 <h1 data-translate="ranking_title">Ranking</h1> 
                  <table id="ranking-table">
-                     <thead><tr><th>Posição</th><th>Username</th><th>Pontuação</th></tr></thead>
-                     <tbody id="ranking-table-body"><tr><td colspan="3">Carregando...</td></tr></tbody>
+                     <thead>
+                         <tr>
+                             <th data-translate="ranking_header_pos">Posição</th>
+                             <th data-translate="ranking_header_user">Username</th>
+                             <th data-translate="ranking_header_score">Pontuação</th>
+                         </tr>
+                    </thead>
+                     <tbody id="ranking-table-body">
+                         <tr><td colspan="3" data-translate="ranking_loading">Carregando...</td></tr>
+                    </tbody>
                  </table>
              </div>
         </div>
@@ -120,24 +165,27 @@
         <div id="page-comunidade" class="page"> 
             <div class="content-card">
                 <h1 data-translate="nav_community">Comunidade</h1>
-                <p>Junte-se ao nosso servidor do Discord!</p> 
-                 <a href="https://discord.gg/SEU_CONVITE" target="_blank" class="secondary-button" style="margin-top: 1rem;">Entrar no Discord</a>
+                <p data-translate="community_subtitle">Junte-se ao nosso servidor do Discord para novidades, eventos e suporte!</p> 
+                 <a href="https://discord.gg/SEU_CONVITE" target="_blank" class="secondary-button" style="margin-top: 1rem;" data-translate="community_join">Entrar no Discord</a>
             </div>
         </div>
 
-        <footer> <p>© 2025 AG Studio. Todos os direitos reservados.</p> </footer>
+        <footer> <p data-translate="footer_copyright">© 2025 AG Studio. Todos os direitos reservados.</p> </footer>
     </main>
 
     <div id="login-modal" class="modal hidden"> 
         <div class="modal-overlay" data-modal-close="login-modal"></div>
         <div class="modal-container">
             <button class="modal-close-btn" data-modal-close="login-modal">&times;</button>
-            <h2>Entrar</h2>
+            <h2 data-translate="modal_login_title">Entrar</h2>
             <form id="login-form">
-                <div class="form-group"><label for="login-username">Usuário</label><input type="text" id="login-username" required></div>
-                <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" required></div>
-                <button type="submit" class="register-btn">Entrar</button>
+                <div class="form-group"><label for="login-username" data-translate="modal_login_user_label">Usuário</label><input type="text" id="login-username" required></div>
+                <div class="form-group"><label for="login-password" data-translate="modal_login_pass_label">Senha</label><input type="password" id="login-password" required></div>
+                <button type="submit" class="register-btn" data-translate="modal_login_button">Entrar</button>
             </form>
+            <a href="#" id="forgot-password-link" style="text-align: center; display: block; margin-top: 1rem; font-size: 0.9rem;" data-translate="modal_login_forgot_pass">
+                Esqueceu a senha?
+            </a>
         </div>
     </div>
     
@@ -145,12 +193,12 @@
         <div class="modal-overlay" data-modal-close="register-modal"></div>
         <div class="modal-container">
             <button class="modal-close-btn" data-modal-close="register-modal">&times;</button>
-            <h2>Criar Conta</h2>
+            <h2 data-translate="modal_register_title">Criar Conta</h2>
             <form id="register-form">
-                <div class="form-group"><label for="username">Usuário</label><input type="text" id="username" required></div>
-                <div class="form-group"><label for="email">E-mail</label><input type="email" id="email" required></div>
-                <div class="form-group"><label for="password">Senha</label><input type="password" id="password" required></div>
-                <button type="submit" class="register-btn">Cadastrar</button>
+                <div class="form-group"><label for="username" data-translate="modal_register_user_label">Usuário</label><input type="text" id="username" required></div>
+                <div class="form-group"><label for="email" data-translate="modal_register_email_label">E-mail</label><input type="email" id="email" required></div>
+                <div class="form-group"><label for="password" data-translate="modal_register_pass_label">Senha (min 8, max 72)</label><input type="password" id="password" required minlength="8"></div>
+                <button type="submit" class="register-btn" data-translate="modal_register_button">Cadastrar</button>
             </form>
         </div>
     </div>
@@ -159,11 +207,92 @@
         <div class="modal-overlay" data-modal-close="edit-profile-modal"></div>
         <div class="modal-container">
             <button class="modal-close-btn" data-modal-close="edit-profile-modal">&times;</button>
-            <h2>Editar Email</h2>
+            <h2 data-translate="modal_edit_email_title">Editar Email</h2>
             <form id="edit-profile-form">
-                <div class="form-group"> <label for="edit-email">Novo E-mail</label> <input type="email" id="edit-email" required> </div>
-                <button type="submit" class="register-btn">Salvar Alterações</button>
+                <div class="form-group">
+                    <label for="edit-email" data-translate="modal_edit_email_label">Novo E-mail</label>
+                    <input type="email" id="edit-email" required>
+                </div>
+                <button type="submit" class="register-btn" data-translate="modal_edit_email_button">Salvar Alterações</button>
             </form>
+        </div>
+    </div>
+
+    <div id="2fa-setup-modal" class="modal hidden">
+        <div class="modal-overlay" data-modal-close="2fa-setup-modal"></div>
+        <div class="modal-container">
+            <button class="modal-close-btn" data-modal-close="2fa-setup-modal">&times;</button>
+            <h2 data-translate="modal_2fa_setup_title">Ativar 2FA</h2>
+            <p class="modal-instruction" data-translate="modal_2fa_setup_instruction">Escaneie o QR Code com seu app autenticador ou insira a chave manualmente.</p>
+            <div class="qr-code-container"><img id="2fa-qr-code" src="" alt="QR Code 2FA"></div>
+            <div class="form-group">
+                <label data-translate="modal_2fa_setup_secret_label">Chave Secreta:</label>
+                <input type="text" id="2fa-secret-key" readonly class="secret-key-input">
+            </div>
+            <form id="2fa-enable-form">
+                <p class="modal-instruction" data-translate="modal_2fa_setup_confirm_instruction">Insira o código de 6 dígitos gerado para confirmar:</p>
+                <div class="form-group">
+                    <label for="2fa-code-input" data-translate="modal_2fa_setup_code_label">Código Verificação</label>
+                    <input type="text" id="2fa-code-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+                </div>
+                <button type="submit" class="register-btn" data-translate="modal_2fa_setup_button">Verificar e Ativar</button>
+            </form>
+            <div id="2fa-setup-error" class="error-message"></div>
+        </div>
+    </div>
+
+    <div id="2fa-login-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-container">
+            <h2 data-translate="modal_2fa_login_title">Verificação 2FA</h2>
+            <p class="modal-instruction" data-translate="modal_2fa_login_instruction">Insira o código do seu app autenticador.</p>
+            <form id="2fa-login-form">
+                <input type="hidden" id="2fa-login-username">
+                <input type="hidden" id="2fa-login-password"> 
+                <div class="form-group">
+                    <label for="2fa-login-code" data-translate="modal_2fa_login_code_label">Código 6 dígitos</label>
+                    <input type="text" id="2fa-login-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+                </div>
+                <button type="submit" class="register-btn" data-translate="modal_2fa_login_button">Confirmar Login</button>
+            </form>
+            <div id="2fa-login-error" class="error-message"></div>
+        </div>
+    </div>
+
+    <div id="change-pass-modal" class="modal hidden">
+    <div class="modal-overlay" data-modal-close="change-pass-modal"></div>
+        <div class="modal-container">
+            <button class="modal-close-btn" data-modal-close="change-pass-modal">&times;</button>
+            <h2 data-translate="modal_change_pass_title">Alterar Senha</h2>
+            <form id="change-pass-form">
+                <div class="form-group">
+                    <label for="old-password" data-translate="modal_change_pass_old_label">Senha Antiga</label>
+                    <input type="password" id="old-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-password" data-translate="modal_change_pass_new_label">Nova Senha (min 8)</label>
+                    <input type="password" id="new-password" required minlength="8">
+                </div>
+                <button type="submit" class="register-btn" data-translate="modal_change_pass_button">Salvar Nova Senha</button>
+            </form>
+            <div id="change-pass-error" class="error-message"></div>
+        </div>
+    </div>
+
+    <div id="forgot-pass-modal" class="modal hidden"> 
+        <div class="modal-overlay" data-modal-close="forgot-pass-modal"></div>
+        <div class="modal-container">
+            <button class="modal-close-btn" data-modal-close="forgot-pass-modal">&times;</button>
+            <h2 data-translate="modal_forgot_pass_title">Redefinir Senha</h2>
+            <p class="modal-instruction" data-translate="modal_forgot_pass_instruction">Insira seu email. Se ele estiver cadastrado, enviaremos um link de redefinição.</p>
+            <form id="forgot-pass-form">
+                <div class="form-group">
+                    <label for="forgot-email" data-translate="modal_forgot_pass_email_label">E-mail</label>
+                    <input type="email" id="forgot-email" required>
+                </div>
+                <button type="submit" class="register-btn" data-translate="modal_forgot_pass_button">Enviar Link</button>
+            </form>
+            <div id="forgot-pass-message" class="error-message" style="margin-top: 1rem;"></div>
         </div>
     </div>
 

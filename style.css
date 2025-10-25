@@ -112,13 +112,32 @@ a {
 a:hover { 
     text-decoration: underline; 
 }
+
 .hero-logo { 
     display: block; 
     max-width: 150px; 
     height: auto; 
     margin: 0 auto 2rem auto; 
-    filter: drop-shadow(0 0 15px rgba(255, 69, 0, 0.6)); 
+    filter: drop-shadow(0 0 15px rgba(255, 69, 0, 0.2)); 
 }
+
+.hero-section .content-card {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+}
+
+.hero-section .hero-logo {
+    max-width: 200px;
+    height: auto;
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.hero-section .hero-text-content {
+    flex-grow: 1;
+}
+
 .content-card { 
     background-color: var(--bg-card); 
     border: 1px solid var(--accent-steel-blue); 
@@ -127,6 +146,7 @@ a:hover {
     margin-bottom: 2rem; 
     backdrop-filter: blur(5px); 
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 69, 0, 0.1); 
+    
 }
 footer { 
     text-align: center; 

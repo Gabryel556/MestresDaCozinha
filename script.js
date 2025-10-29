@@ -1,4 +1,4 @@
-const API_URL = "https://6cbaeb85d15b.ngrok-free.app";
+const API_URL = "https://b1096bdb11de.ngrok-free.app";
 const WEBSITE_API_KEY = "ag_b1ac536efcbe3e2972293ebeba9d044227e077bec317bc98e66d4ebc8a198ec8"; 
 const jogoLancado = true;
 let translations = {};

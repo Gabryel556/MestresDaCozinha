@@ -74,11 +74,10 @@ async function loadProfileData() {
     const errorDiv = document.getElementById('profile-info-error');
     const token = localStorage.getItem("jwt_token");
 
-    // Configuração inicial
     loadingDiv?.classList.remove('hidden'); 
     contentDiv?.classList.add('hidden'); 
     errorDiv?.classList.add('hidden');
-    document.getElementById('profile-inventory-grid').innerHTML = ''; // Limpa o inventário
+    document.getElementById('profile-inventory-grid').innerHTML = '';
 
     if (!token) {
         if(errorDiv) errorDiv.textContent = translateKey('error_profile_load_generic'); 
@@ -86,9 +85,19 @@ async function loadProfileData() {
         loadingDiv?.classList.add('hidden'); 
         return;
     }
+    try {
+        console.log("Tentando /ping...");
+        const pingRes = await fetch(`${API_URL}/ping`);
+        if (!pingRes.ok) console.error("Ping falhou:", pingRes.status);
+        else {
+            const pingData = await pingRes.json();
+            console.log("Ping OK:", pingData); 
+        }
+    } catch(pingErr) {
+        console.error("Erro no Ping:", pingErr);
+    }
 
     try {
-        // --- Bloco 1: Carregar Perfil Básico (Crítico) ---
         const response = await fetch(`${API_URL}/users/me`, {
             headers: { 'Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY, 'Cache-Control': 'no-cache' }
         });
@@ -100,7 +109,6 @@ async function loadProfileData() {
              throw new Error(data.detail || `Erro ${response.status}`);
         }
 
-        // Preenche os dados
         document.getElementById('profile-username').textContent = data.username;
         document.getElementById('profile-email').textContent = data.email;
         document.getElementById('profile-currency').textContent = data.in_game_currency;

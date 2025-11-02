@@ -42,6 +42,7 @@
                 <a href="#" data-page="loja"><i class="fa-solid fa-store"></i> <span data-translate="nav_shop">Loja</span></a>
                 <a href="#" data-page="ranking"><i class="fa-solid fa-trophy"></i> <span data-translate="nav_ranking">Ranking</span></a>
                 <a href="#" data-page="comunidade"><i class="fa-solid fa-users"></i> <span data-translate="nav_community">Comunidade</span></a>
+                <a href="#" data-page="codex"><i class="fa-solid fa-book-open"></i> <span data-translate="nav_codex">Culinária</span></a> ```
             </nav>
         </div>
         <div class="sidebar-bottom">
@@ -114,10 +115,33 @@
                     </form>
 
                     <hr class="section-divider">
+                    <h2 data-translate="profile_vip_title">Escala de Lealdade</h2>
+                    <div id="vip-status-container">
+                        <p>
+                            <strong>Nível VIP:</strong> <span id="vip-level" style="color: var(--accent-orange); font-weight: bold;">...</span>
+                            <span style="margin-left: 1rem;">
+                                <strong>Total Gasto:</strong> <span id="vip-total-spent">...</span> Cash
+                            </span>
+                        </p>
+                        <p>
+                            <strong>Progresso para o próximo nível:</strong> 
+                            <span id="vip-progress-bar-text">(... / ...)</span>
+                        </p>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="vip-progress-bar" style="width: 0%;"></div>
+                        </div>
+                        <h3 style="margin-top: 2rem;">Recompensas de Nível</h3>
+                        <div id="vip-rewards-list" class="shop-items-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                            </div>
+                    </div>
+
+                    <hr class="section-divider">
                     <h2 data-translate="profile_inventory_title">Meu Inventário</h2>
                     <div id="profile-inventory-grid" class="shop-items-grid">
                         <p data-translate="profile_inventory_loading">Carregando inventário...</p>
                     </div>
+
+                    
                 </div>
                 <div id="profile-info-error" class="hidden error-message"></div>
             </div>
@@ -170,6 +194,30 @@
                 <h1 data-translate="nav_community">Comunidade</h1>
                 <p data-translate="community_subtitle">Junte-se ao nosso servidor do Discord para novidades, eventos e suporte!</p> 
                  <a href="https://discord.gg/WQuKj9gC8w" target="_blank" class="secondary-button" style="margin-top: 1rem;" data-translate="community_join">Entrar no Discord</a>
+            </div>
+        </div>
+
+        <div id="page-codex" class="page">
+            <div class="content-card">
+                <h1 data-translate="nav_codex">Livro de Culinária</h1>
+                <nav class="shop-categories">
+                    <button class="shop-category-btn active" data-category="codex-ingredients" data-translate="codex_ingredients">Ingredientes</button>
+                    <button class="shop-category-btn" data-category="codex-recipes" data-translate="codex_recipes">Receitas</button>
+                </nav>
+                
+                <div id="category-codex-ingredients" class="shop-category-content active">
+                    <h2 data-translate="codex_ingredients_title">Livro de Ingredientes</h2>
+                    <div id="codex-ingredients-grid" class="shop-items-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                        <p data-translate="shop_loading">Carregando...</p>
+                    </div>
+                </div>
+                
+                <div id="category-codex-recipes" class="shop-category-content">
+                    <h2 data-translate="codex_recipes_title">Livro de Receitas</h2>
+                    <div id="codex-recipes-grid" class="shop-items-grid">
+                        <p data-translate="shop_loading">Carregando...</p>
+                    </div>
+                </div>
             </div>
         </div>
 

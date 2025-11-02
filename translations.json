@@ -127,7 +127,13 @@
         "error_translation_load": "Erro ao carregar traduções:",
         "status_processing": "Processando...",
         "status_buy_processing": "Indo para pagamento...",
-        "status_loading_qr": "Carregando QR Code..."
+        "status_loading_qr": "Carregando QR Code...",
+        "nav_codex": "Culinária",
+        "codex_ingredients": "Ingredientes",
+        "codex_recipes": "Receitas",
+        "codex_ingredients_title": "Livro de Ingredientes",
+        "codex_recipes_title": "Livro de Receitas",
+        "profile_vip_title": "Escala de Lealdade"
     },
     "en": {
         "site_title": "Masters of the Kitchen",
@@ -257,7 +263,13 @@
         "error_translation_load": "Error loading translations:",
         "status_processing": "Processing...",
         "status_buy_processing": "Going to payment...",
-        "status_loading_qr": "Loading QR Code..."
+        "status_loading_qr": "Loading QR Code...",
+        "nav_codex": "Cookbook",
+        "codex_ingredients": "Ingredients",
+        "codex_recipes": "Recipes",
+        "codex_ingredients_title": "Ingredients Codex",
+        "codex_recipes_title": "Recipes Book",
+        "profile_vip_title": "Loyalty Scale"
     },
     "es": {
         "site_title": "Maestros de la Cocina",

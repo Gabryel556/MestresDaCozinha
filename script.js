@@ -9,8 +9,6 @@ let current2FASecret = null;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 let currentLanguage = localStorage.getItem('preferred_language') || 'pt';
 
-//... (depois de 'let currentLanguage = ...')
-
 /**
  * Wrapper 'fetch' personalizado para adicionar cabeçalhos padrão da API e do Ngrok.
  * @param {string} endpoint - O endpoint da API (ex: /users/me)
@@ -170,6 +168,7 @@ async function loadProfileData() {
         
         loadInventory();
         check2FAStatus();
+        loadVipStatus();
 
         try {
             const statsResponse = await apiFetch("/users/me/stats");
@@ -246,6 +245,183 @@ async function loadInventory() {
     } catch (error) {
         console.error("Erro ao carregar inventário:", error);
         grid.innerHTML = `<p style="color: var(--error-color);">Erro ao carregar inventário: ${error.message}</p>`;
+    }
+}
+
+async function loadVipStatus() {
+    const container = document.getElementById('vip-status-container');
+    if (!container) return;
+    
+    const levelEl = document.getElementById('vip-level');
+    const spentEl = document.getElementById('vip-total-spent');
+    const progressTextEl = document.getElementById('vip-progress-bar-text');
+    const progressBarEl = document.getElementById('vip-progress-bar');
+    const rewardsListEl = document.getElementById('vip-rewards-list');
+
+    try {
+        const response = await apiFetch("/users/me/vip_status");
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Erro ao buscar status VIP');
+
+        levelEl.textContent = data.current_vip_level;
+        spentEl.textContent = data.total_premium_spent;
+        
+        const progressPercent = (data.progress_to_next_level / data.next_level_cost) * 100;
+        progressTextEl.textContent = `(${data.progress_to_next_level} / ${data.next_level_cost} Cash)`;
+        progressBarEl.style.width = `${progressPercent}%`;
+        
+        rewardsListEl.innerHTML = '';
+        data.rewards.forEach(reward => {
+            const card = document.createElement('div');
+            card.className = 'shop-item-card';
+            
+            let buttonHtml = '';
+            if (reward.is_claimed) {
+                buttonHtml = `<button class="buy-button disabled" disabled>Resgatado</button>`;
+            } else if (data.current_vip_level >= reward.level) {
+                buttonHtml = `<button class="buy-button" data-level="${reward.level}">Resgatar</button>`;
+            } else {
+                buttonHtml = `<button class="buy-button not-unlocked" disabled>Bloqueado</button>`;
+            }
+            
+            card.innerHTML = `
+                <h3 style="color: var(--accent-orange);">Nível ${reward.level}</h3>
+                <p class="item-description">${reward.reward_description || 'Recompensa'}</p>
+                <div class="buy-options" style="margin-top: 1rem;">
+                    ${buttonHtml}
+                </div>
+            `;
+            
+            const claimButton = card.querySelector('.buy-button[data-level]');
+            if (claimButton) {
+                claimButton.addEventListener('click', () => handleClaimVipReward(reward.level));
+            }
+            
+            rewardsListEl.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error("Erro ao carregar status VIP:", error);
+        container.innerHTML = `<p style="color: var(--error-color);">Erro ao carregar dados VIP: ${error.message}</p>`;
+    }
+}
+
+async function handleClaimVipReward(level) {
+    const button = document.querySelector(`.buy-button[data-level="${level}"]`);
+    if (!button) return;
+    
+    button.disabled = true;
+    button.textContent = 'Processando...';
+    
+    try {
+        const response = await apiFetch("/users/me/vip_claim_reward", {
+            method: 'POST',
+            body: JSON.stringify({ level: level })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Falha ao resgatar');
+        
+        alert(result.message);
+        loadVipStatus();
+        loadUserWallet();
+        
+    } catch (error) {
+        console.error("Erro ao resgatar recompensa VIP:", error);
+        alert(`Erro: ${error.message}`);
+        button.disabled = false;
+        button.textContent = 'Resgatar';
+    }
+}
+
+async function loadCodexIngredients() {
+    const grid = document.getElementById('codex-ingredients-grid');
+    if (!grid) return;
+    grid.innerHTML = `<p>${translateKey('shop_loading')}</p>`;
+    
+    try {
+        const response = await apiFetch("/game/codex/ingredients");
+        const ingredients = await response.json();
+        if (!response.ok) throw new Error(ingredients.detail || 'Erro ao buscar ingredientes');
+        
+        grid.innerHTML = '';
+        if (ingredients.length === 0) {
+            grid.innerHTML = '<p>Nenhum ingrediente encontrado.</p>';
+            return;
+        }
+        
+        ingredients.forEach(ing => {
+            const card = document.createElement('div');
+            card.className = 'codex-card';
+            const imgHtml = ing.image_url ? `<img src="${ing.image_url}" alt="${ing.name}" class="shop-item-image">` : '<div class="shop-item-image-placeholder">?</div>';
+            
+            card.innerHTML = `
+                ${imgHtml}
+                <h3>${ing.name}</h3>
+                <p class="item-description">${ing.description || 'Um ingrediente...'}</p>
+                <ul class="codex-stats">
+                    <li><strong>Salgado:</strong> <span>${ing.attr_salty}</span></li>
+                    <li><strong>Doce:</strong> <span>${ing.attr_sweet}</span></li>
+                    <li><strong>Ácido:</strong> <span>${ing.attr_sour}</span></li>
+                    <li><strong>Amargo:</strong> <span>${ing.attr_bitter}</span></li>
+                    <li><strong>Umami:</strong> <span>${ing.attr_umami}</span></li>
+                    <li><strong>Textura:</strong> <span>${ing.attr_texture}</span></li>
+                    <li><strong>Aroma:</strong> <span>${ing.attr_aroma}</span></li>
+                    <li style="color: ${ing.is_toxic_raw ? 'var(--error-color)' : 'inherit'};">
+                        <strong>Tóxico Cru:</strong> <span>${ing.is_toxic_raw ? 'Sim' : 'Não'}</span>
+                    </li>
+                    <li style="color: ${ing.needs_cooking ? 'var(--accent-orange)' : 'inherit'};">
+                        <strong>Precisa Cozinhar:</strong> <span>${ing.needs_cooking ? 'Sim' : 'Não'}</span>
+                    </li>
+                </ul>
+            `;
+            grid.appendChild(card);
+        });
+        
+    } catch (error) {
+        console.error("Erro ao carregar ingredientes:", error);
+        grid.innerHTML = `<p style="color: var(--error-color);">Erro ao carregar ingredientes: ${error.message}</p>`;
+    }
+}
+
+async function loadCodexRecipes() {
+    const grid = document.getElementById('codex-recipes-grid');
+    if (!grid) return;
+    grid.innerHTML = `<p>${translateKey('shop_loading')}</p>`;
+    
+    try {
+        const response = await apiFetch("/game/crafting/recipes");
+        const recipes = await response.json();
+        if (!response.ok) throw new Error(recipes.detail || 'Erro ao buscar receitas');
+        
+        grid.innerHTML = '';
+        if (recipes.length === 0) {
+            grid.innerHTML = '<p>Nenhuma receita encontrada.</p>';
+            return;
+        }
+        
+        recipes.forEach(recipe => {
+            const card = document.createElement('div');
+            card.className = 'codex-card';
+            const imgHtml = recipe.output_image_url ? `<img src="${recipe.output_image_url}" alt="${recipe.output_item_name}" class="shop-item-image">` : '<div class="shop-item-image-placeholder">?</div>';
+            
+            const ingredientsHtml = recipe.ingredients.map(ing => 
+                `<li>${ing.item_name} (x${ing.quantity_required})</li>`
+            ).join('');
+            
+            card.innerHTML = `
+                ${imgHtml}
+                <h3>${recipe.output_item_name} (x${recipe.output_item_quantity})</h3>
+                <div class="codex-recipe-ingredients">
+                    <strong>Ingredientes:</strong>
+                    <ul>${ingredientsHtml || '<li>Nenhum</li>'}</ul>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+        
+    } catch (error) {
+        console.error("Erro ao carregar receitas:", error);
+        grid.innerHTML = `<p style="color: var(--error-color);">Erro ao carregar receitas: ${error.message}</p>`;
     }
 }
 
@@ -707,21 +883,31 @@ function showPage(pageId) {
     if (targetPage?.classList.contains('active')) {
         if (pageId === 'ranking') loadRanking();
         else if (pageId === 'profile'){ 
-            loadProfileData(); 
-            check2FAStatus(); 
+            loadProfileData();
         }
         else if (pageId === 'loja') loadShopItems();
+        else if (pageId === 'codex') {
+            loadCodexIngredients();
+            loadCodexRecipes();
+        }
     }
 }
 
 function setupShopCategories() {
     const categoryButtons = document.querySelectorAll('.shop-category-btn');
     const categoryContents = document.querySelectorAll('.shop-category-content');
+    
     categoryButtons.forEach(button => {
         button.addEventListener('click', () => {
             const targetCategory = button.dataset.category;
-            categoryContents.forEach(content => content.classList.remove('active'));
-            categoryButtons.forEach(btn => btn.classList.remove('active'));
+            
+            const parentContainer = button.closest('nav').nextElementSibling;
+            if (parentContainer) {
+                 parentContainer.querySelectorAll('.shop-category-content').forEach(content => content.classList.remove('active'));
+            }
+            
+            button.closest('nav').querySelectorAll('.shop-category-btn').forEach(btn => btn.classList.remove('active'));
+            
             document.getElementById(`category-${targetCategory}`)?.classList.add('active');
             button.classList.add('active');
         });

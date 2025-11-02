@@ -251,7 +251,7 @@ async function loadInventory() {
 async function loadVipStatus() {
     const container = document.getElementById('vip-status-container');
     if (!container) return;
-    
+
     const levelEl = document.getElementById('vip-level');
     const spentEl = document.getElementById('vip-total-spent');
     const progressTextEl = document.getElementById('vip-progress-bar-text');
@@ -264,39 +264,63 @@ async function loadVipStatus() {
         if (!response.ok) throw new Error(data.detail || 'Erro ao buscar status VIP');
 
         levelEl.textContent = data.current_vip_level;
-        spentEl.textContent = data.total_premium_spent;
-        
+        spentEl.textContent = data.total_premium_spent; // Gasto Sazonal
+
         const progressPercent = (data.progress_to_next_level / data.next_level_cost) * 100;
         progressTextEl.textContent = `(${data.progress_to_next_level} / ${data.next_level_cost} Cash)`;
         progressBarEl.style.width = `${progressPercent}%`;
-        
+
         rewardsListEl.innerHTML = '';
-        data.rewards.forEach(reward => {
+        if (data.rewards.length === 0) {
+            rewardsListEl.innerHTML = "<p>Nenhuma recompensa VIP definida ainda.</p>";
+            return;
+        }
+
+        data.rewards.forEach(level => {
             const card = document.createElement('div');
             card.className = 'shop-item-card';
-            
-            let buttonHtml = '';
-            if (reward.is_claimed) {
-                buttonHtml = `<button class="buy-button disabled" disabled>Resgatado</button>`;
-            } else if (data.current_vip_level >= reward.level) {
-                buttonHtml = `<button class="buy-button" data-level="${reward.level}">Resgatar</button>`;
-            } else {
-                buttonHtml = `<button class="buy-button not-unlocked" disabled>Bloqueado</button>`;
+            let buttonsHtml = '';
+            const isUnlocked = level.is_unlocked;
+
+            // 1. Botão do Pacote Fixo (Moedas/Cash)
+            const fixed = level.fixed_reward;
+            if (fixed.currency > 0 || fixed.premium > 0) {
+                let fixedDesc = [];
+                if (fixed.currency > 0) fixedDesc.push(`${fixed.currency} Moedas`);
+                if (fixed.premium > 0) fixedDesc.push(`${fixed.premium} Cash`);
+
+                if (fixed.is_claimed) {
+                    buttonsHtml += `<button class="buy-button disabled" disabled>Pacote Fixo Resgatado</button>`;
+                } else if (isUnlocked) {
+                    buttonsHtml += `<button class="buy-button buy-vip" data-level="${level.level}" data-type="fixed">Resgatar (${fixedDesc.join(' + ')})</button>`;
+                } else {
+                    buttonsHtml += `<button class="buy-button not-unlocked" disabled>${fixedDesc.join(' + ')} (Bloqueado)</button>`;
+                }
             }
-            
+
+            // 2. Botões dos Itens de Escolha
+            level.item_choices.forEach(item => {
+                if (item.is_claimed) {
+                    buttonsHtml += `<button class="buy-button disabled" disabled>${item.item_name} (Resgatado)</button>`;
+                } else if (isUnlocked) {
+                    buttonsHtml += `<button class="buy-button buy-vip buy-premium" data-level="${level.level}" data-type="item" data-item-id="${item.item_id}">Resgatar (${item.item_name})</button>`;
+                } else {
+                    buttonsHtml += `<button class="buy-button not-unlocked" disabled>${item.item_name} (Bloqueado)</button>`;
+                }
+            });
+
             card.innerHTML = `
-                <h3 style="color: var(--accent-orange);">Nível ${reward.level}</h3>
-                <p class="item-description">${reward.reward_description || 'Recompensa'}</p>
-                <div class="buy-options" style="margin-top: 1rem;">
-                    ${buttonHtml}
+                <h3 style="color: var(--accent-orange);">Nível ${level.level}</h3>
+                <p class="item-description">${level.reward_description || 'Recompensa'}</p>
+                <div class="buy-options" style="margin-top: 1rem; gap: 0.5rem;">
+                    ${buttonsHtml || '<p>Nenhuma recompensa definida.</p>'}
                 </div>
             `;
-            
-            const claimButton = card.querySelector('.buy-button[data-level]');
-            if (claimButton) {
-                claimButton.addEventListener('click', () => handleClaimVipReward(reward.level));
-            }
-            
+
+            card.querySelectorAll('.buy-button.buy-vip').forEach(button => {
+                button.addEventListener('click', handleClaimVipReward);
+            });
+
             rewardsListEl.appendChild(card);
         });
 
@@ -306,30 +330,44 @@ async function loadVipStatus() {
     }
 }
 
-async function handleClaimVipReward(level) {
-    const button = document.querySelector(`.buy-button[data-level="${level}"]`);
-    if (!button) return;
-    
+async function handleClaimVipReward(event) {
+    const button = event.target;
+    const level = parseInt(button.dataset.level);
+    const claimType = button.dataset.type;
+    const itemId = parseInt(button.dataset.itemId) || null;
+
+    if (isNaN(level) || !claimType) {
+        alert("Erro: Botão de resgate inválido.");
+        return;
+    }
+
+    let confirmMsg = `Resgatar ${claimType === 'fixed' ? 'pacote fixo' : `item`} do Nível ${level}?`;
+    if (!confirm(confirmMsg)) return;
+
     button.disabled = true;
     button.textContent = 'Processando...';
-    
+
     try {
         const response = await apiFetch("/users/me/vip_claim_reward", {
             method: 'POST',
-            body: JSON.stringify({ level: level })
+            body: JSON.stringify({ 
+                level: level,
+                claim_type: claimType,
+                chosen_item_id: itemId
+            })
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail || 'Falha ao resgatar');
-        
+
         alert(result.message);
         loadVipStatus();
         loadUserWallet();
-        
+
     } catch (error) {
         console.error("Erro ao resgatar recompensa VIP:", error);
         alert(`Erro: ${error.message}`);
         button.disabled = false;
-        button.textContent = 'Resgatar';
+        button.textContent = 'Tentar Novamente';
     }
 }
 

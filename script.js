@@ -1,4 +1,4 @@
-const API_URL = "https://03c289594460.ngrok-free.app";
+const API_URL = "https://d1402f8b117e.ngrok-free.app";
 const WEBSITE_API_KEY = "ag_b1ac536efcbe3e2972293ebeba9d044227e077bec317bc98e66d4ebc8a198ec8"; 
 const jogoLancado = true;
 let translations = {};
@@ -9,11 +9,53 @@ let current2FASecret = null;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 let currentLanguage = localStorage.getItem('preferred_language') || 'pt';
 
+//... (depois de 'let currentLanguage = ...')
+
+/**
+ * Wrapper 'fetch' personalizado para adicionar cabeçalhos padrão da API e do Ngrok.
+ * @param {string} endpoint - O endpoint da API (ex: /users/me)
+ * @param {object} options - As opções do fetch (method, body, etc.)
+ * @returns {Promise<Response>}
+ */
+async function apiFetch(endpoint, options = {}) {
+    const token = localStorage.getItem("jwt_token");
+
+    const headers = new Headers();
+    headers.append("X-API-Key", WEBSITE_API_KEY);
+
+    headers.append("ngrok-skip-browser-warning", "true");
+
+    if (token) {
+        headers.append("Authorization", `Bearer ${token}`);
+    }
+
+    if (!options.method || options.method === 'GET') {
+        headers.append("Cache-Control", "no-cache");
+    }
+
+    if (options.body) {
+        headers.append("Content-Type", "application/json");
+    }
+
+    if (options.headers) {
+        for (const [key, value] of Object.entries(options.headers)) {
+            headers.append(key, value);
+        }
+    }
+
+    const fetchOptions = {
+        ...options,
+        headers: headers
+    };
+
+    return fetch(`${API_URL}${endpoint}`, fetchOptions);
+}
+
 async function performLogin(username, password) {
     try {
         console.log("Chamando API /website/login...")
-        const response = await fetch(`${API_URL}/website/login`, {
-            method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": WEBSITE_API_KEY },
+        const response = await apiFetch(`/website/login`, {
+            method: "POST",
             body: JSON.stringify({ username, password })
         });
         const result = await response.json();
@@ -43,8 +85,8 @@ async function performLogin(username, password) {
 
 async function performRegister(username, email, password) {
     try {
-        const response = await fetch(`${API_URL}/register`, {
-            method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": WEBSITE_API_KEY },
+        const response = await apiFetch(`/register`, {
+            method: "POST",
             body: JSON.stringify({ username, email, password })
         });
         const result = await response.json();
@@ -87,7 +129,7 @@ async function loadProfileData() {
     }
     try {
         console.log("Tentando /ping...");
-        const pingRes = await fetch(`${API_URL}/ping`);
+        const pingRes = await apiFetch(`/ping`);
         if (!pingRes.ok) console.error("Ping falhou:", pingRes.status);
         else {
             const pingData = await pingRes.json();
@@ -98,9 +140,7 @@ async function loadProfileData() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/users/me`, {
-            headers: { 'Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY, 'Cache-Control': 'no-cache' }
-        });
+        const response = await apiFetch("/users/me");
         const data = await response.json();
         if (!response.ok) {
              if (response.status === 401 || data.detail.toLowerCase().includes("token")) {
@@ -131,11 +171,8 @@ async function loadProfileData() {
         loadInventory();
         check2FAStatus();
 
-        // --- Bloco 2: Carregar Estatísticas (Bónus, não-crítico) ---
         try {
-            const statsResponse = await fetch(`${API_URL}/users/me/stats`, {
-                headers: { 'Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY, 'Cache-Control': 'no-cache' }
-            });
+            const statsResponse = await apiFetch("/users/me/stats");
             const statsData = await statsResponse.json();
             if (!statsResponse.ok) throw new Error(statsData.detail || 'Erro ao buscar stats');
 
@@ -175,13 +212,7 @@ async function loadInventory() {
     grid.innerHTML = '<p>Carregando inventário...</p>';
 
     try {
-        const response = await fetch(`${API_URL}/users/me/inventory`, {
-            headers: { 
-                'Authorization': `Bearer ${token}`, 
-                'X-API-Key': WEBSITE_API_KEY,
-                'Cache-Control': 'no-cache'
-            }
-        });
+        const response = await apiFetch("/users/me/inventory");
         const items = await response.json();
         if (!response.ok) throw new Error(items.detail || 'Falha ao buscar inventário');
 
@@ -231,9 +262,7 @@ async function check2FAStatus() {
     disableBtn.classList.add('hidden');
 
     try {
-        const response = await fetch(`${API_URL}/users/me`, {
-            headers: { 'Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY, 'Cache-Control': 'no-cache' }
-        });
+        const response = await apiFetch(`/users/me`);
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail);
 
@@ -266,9 +295,8 @@ async function start2FASetup() {
     qrCodeImg.alt = "Carregando QR Code...";
 
     try {
-        const response = await fetch(`${API_URL}/users/me/2fa/setup`, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY }
+        const response = await apiFetch(`/users/me/2fa/setup`, {
+            method: 'GET'
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail);
@@ -293,9 +321,8 @@ async function confirmAndEnable2FA(code) {
     errorDiv.textContent = '';
 
     try {
-        const response = await fetch(`${API_URL}/users/me/2fa/enable`, {
+        const response = await apiFetch(`/users/me/2fa/enable`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY },
             body: JSON.stringify({ secret: current2FASecret, code: code })
         });
         const result = await response.json();
@@ -321,9 +348,8 @@ async function disable2FA() {
      if (!code) return;
 
      try {
-         const response = await fetch(`${API_URL}/users/me/2fa/disable`, {
+         const response = await apiFetch(`/users/me/2fa/disable`, {
              method: 'POST',
-             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY },
              body: JSON.stringify({ code: code })
          });
          const result = await response.json();
@@ -343,8 +369,8 @@ async function performLogin2FA(username, password, code) {
      if (!errorDiv) return; errorDiv.textContent = '';
      try {
         console.log("Chamando API /website/login/2fa...");
-        const response = await fetch(`${API_URL}/website/login/2fa`, {
-            method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": WEBSITE_API_KEY },
+        const response = await apiFetch(`/website/login/2fa`, {
+            method: "POST",
             body: JSON.stringify({ username, password, code })
         });
         const result = await response.json();
@@ -362,9 +388,8 @@ async function updateProfileData(newEmail) {
      const token = localStorage.getItem("jwt_token");
      if (!token) { alert("Sessão expirada. Faça login novamente."); return; }
      try {
-         const response = await fetch(`${API_URL}/users/me`, {
+         const response = await apiFetch(`/users/me`, {
              method: 'PATCH',
-             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY },
              body: JSON.stringify({ email: newEmail })
          });
          const result = await response.json();
@@ -390,10 +415,7 @@ async function loadUserWallet() {
     premiumEl.textContent = '...';
 
     try {
-        const response = await fetch(`${API_URL}/users/me`, {
-            headers: { 'Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY, 'Cache-Control': 'no-cache' }
-        });
-        //
+        const response = await apiFetch(`/users/me`);
         if (!response.ok) {
              currencyEl.textContent = 'Erro'; premiumEl.textContent = 'Erro';
              if (response.status === 401) logout();
@@ -441,7 +463,7 @@ async function loadRanking() {
     if (!tableBody) { console.error("Elemento #ranking-table-body não encontrado."); return; } 
     tableBody.innerHTML = '<tr><td colspan="3">Carregando ranking...</td></tr>';
     try {
-        const response = await fetch(`${API_URL}/ranking`);
+        const response = await apiFetch(`/ranking`);
         if (!response.ok) { 
             const errorData = await response.json().catch(() => ({detail: `Erro HTTP ${response.status}`}));
             throw new Error(errorData.detail || `Erro ${response.status}`);
@@ -468,7 +490,7 @@ async function loadShopItems() {
     let hasLoadError = false;
     try {
         if (allShopItems.length === 0) {
-            const internalResponse = await fetch(`${API_URL}/shop/items?item_type=premium`);
+            const internalResponse = await apiFetch(`/shop/items?item_type=premium`);
             if (!internalResponse.ok) { 
                  hasLoadError = true; 
                  const err = await internalResponse.json().catch(() => ({detail:''}));
@@ -477,7 +499,7 @@ async function loadShopItems() {
             allShopItems = await internalResponse.json(); 
         }
         if (stripeProducts.length === 0) {
-             const stripeResponse = await fetch(`${API_URL}/shop/stripe-products`);
+             const stripeResponse = await apiFetch(`/shop/stripe-products`);
              if (!stripeResponse.ok) { 
                  hasLoadError = true; 
                  const err = await stripeResponse.json().catch(() => ({detail:''}));
@@ -506,9 +528,8 @@ async function handleBuyClick(event) {
 
     button.disabled = true; button.textContent = 'Indo para pagamento...';
     try {
-        const response = await fetch(`${API_URL}/shop/create-checkout-session`, {
+        const response = await apiFetch(`/shop/create-checkout-session`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY },
             body: JSON.stringify({ priceId: priceId })
         });
         const session = await response.json();
@@ -539,9 +560,8 @@ async function handleBuyInternalClick(event) {
 
     button.disabled = true; button.textContent = 'Processando...';
     try {
-        const response = await fetch(`${API_URL}/shop/buy_internal_item`, {
+        const response = await apiFetch(`/shop/buy_internal_item`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json','Authorization': `Bearer ${token}`, 'X-API-Key': WEBSITE_API_KEY },
             body: JSON.stringify({ itemId: itemId, currencyType: currencyType })
         });
         const result = await response.json();
@@ -835,13 +855,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!linkCode || linkCode.length !== 6) { alert("Código inválido."); return; }
 
             try {
-                const response = await fetch(`${API_URL}/users/me/confirm_link`, {
+                const response = await apiFetch(`/users/me/confirm_link`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`, 
-                        'X-API-Key': WEBSITE_API_KEY 
-                    },
                     body: JSON.stringify({ link_code: linkCode })
                 });
                 const result = await response.json();
@@ -891,13 +906,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (changePassError) changePassError.textContent = '';
 
             try {
-                const response = await fetch(`${API_URL}/users/me/change-password`, {
+                const response = await apiFetch(`/users/me/change-password`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                        'X-API-Key': WEBSITE_API_KEY
-                    },
                     body: JSON.stringify({ 
                         old_password: oldPassword, 
                         new_password: newPassword 
@@ -938,12 +948,8 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.disabled = true;
 
             try {
-                const response = await fetch(`${API_URL}/forgot-password`, {
+                const response = await apiFetch(`/forgot-password`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-Key': WEBSITE_API_KEY
-                    },
                     body: JSON.stringify({ email: email })
                 });
                 const result = await response.json();

@@ -154,17 +154,24 @@
         </div>
         
         <div id="page-ranking" class="page"> 
-             <div class="content-card"> 
-                 <h1 data-translate="ranking_title">Ranking</h1> 
+            <div class="content-card"> 
+                <h1 data-translate="ranking_title">Ranking</h1> 
 
-                 <div id="ranking-locked" class="hidden" style="text-align: center; padding: 2rem; background-color: var(--bg-card); border: 1px solid var(--error-color); border-radius: 8px;">
-                     <i class="fa-solid fa-lock" style="font-size: 2.5rem; color: var(--error-color); margin-bottom: 1rem;"></i>
-                     <h3 data-translate="ranking_locked_title">Ranking Bloqueado</h3>
-                     <p data-translate="ranking_locked_desc">Você precisa jogar pelo menos 2 partidas para desbloquear o ranking.</p>
-                 </div>
+                <div id="ranking-locked" class="hidden" style="text-align: center; padding: 2rem; background-color: var(--bg-card); border: 1px solid var(--error-color); border-radius: 8px;">
+                    <i class="fa-solid fa-lock" style="font-size: 2.5rem; color: var(--error-color); margin-bottom: 1rem;"></i>
+                    <h3 data-translate="ranking_locked_title">Ranking Bloqueado</h3>
+                    <p data-translate="ranking_locked_desc">Você precisa jogar pelo menos 2 partidas para desbloquear o ranking.</p>
+                </div>
 
-                 <div id="ranking-content">
-                     <table id="ranking-table">
+                <div id="ranking-content">
+                    
+                    <div class="form-group" style="margin-bottom: 1.5rem; max-width: 300px;">
+                        <label for="season-select" style="font-size: 1rem; color: var(--text-secondary);">Selecionar Temporada</label>
+                        <select id="season-select" class="form-control" style="width: 100%; padding: 0.8rem; background: #333; border: 1px solid #555; color: white; border-radius: 5px; font-size: 1rem;">
+                            <option value="current">Temporada Atual</option>
+                            </select>
+                    </div>
+                    <table id="ranking-table">
                          <thead>
                              <tr>
                                  <th data-translate="ranking_header_pos">Posição</th>

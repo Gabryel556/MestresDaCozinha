@@ -1091,7 +1091,7 @@ function updateDownloadButton() {
     if (jogoLancado) {
         btn.textContent = translations[currentLanguage]?.[keyCTA] || 'Download Now!';
         btn.classList.add('active'); btn.classList.remove('disabled'); btn.disabled = false;
-        btn.onclick = () => window.location.href = 'https://drive.google.com/drive/folders/1ZllnIiZQWxJx0vuItNVlyK1ZStI6ifVU?usp=sharing'; 
+        btn.onclick = () => window.location.href = ''; 
     } else {
         btn.textContent = translations[currentLanguage]?.[keySoon] || 'Coming Soon';
         btn.classList.add('disabled'); btn.classList.remove('active'); btn.disabled = true;

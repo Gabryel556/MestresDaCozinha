@@ -700,8 +700,43 @@ function updateLoginStatus() {
 
 async function loadRanking() {
     const tableBody = document.getElementById('ranking-table-body');
-    if (!tableBody) { console.error("Elemento #ranking-table-body não encontrado."); return; } 
-    tableBody.innerHTML = '<tr><td colspan="3">Carregando ranking...</td></tr>';
+    const lockedDiv = document.getElementById('ranking-locked');
+    const contentDiv = document.getElementById('ranking-content');
+    const token = localStorage.getItem("jwt_token");
+
+    if (!tableBody || !lockedDiv || !contentDiv) { 
+        console.error("Elementos do Ranking (table, locked, content) não encontrados."); 
+        return; 
+    }
+
+    // Por padrão, assume que está desbloqueado (para visitantes)
+    lockedDiv.classList.add('hidden');
+    contentDiv.classList.remove('hidden');
+    tableBody.innerHTML = `<tr><td colspan="3" data-translate="ranking_loading">${translateKey('ranking_loading')}</td></tr>`;
+
+    if (token) {
+        try {
+            // Se está logado, verifica as estatísticas PRIMEIRO
+            const statsResponse = await apiFetch("/users/me/stats");
+            const statsData = await statsResponse.json();
+            if (!statsResponse.ok) throw new Error(statsData.detail || 'Erro ao buscar stats');
+
+            if (statsData.total_matches_played <= 1) {
+                // Bloqueia a visualização
+                lockedDiv.classList.remove('hidden');
+                contentDiv.classList.add('hidden');
+                tableBody.innerHTML = ''; // Limpa a tabela
+                applyTranslations(); // Garante que o texto de bloqueio seja traduzido
+                return; // Para aqui
+            }
+            // Se passou (>= 2 partidas), continua para carregar o ranking
+        } catch (statsError) {
+            console.error("Erro ao verificar stats para o ranking (usuário logado):", statsError);
+            // Falha ao verificar stats? Deixa o ranking público carregar por segurança.
+        }
+    }
+
+    // Carrega o ranking (Seja para visitante ou para usuário logado com > 1 partida)
     try {
         const response = await apiFetch(`/ranking`);
         if (!response.ok) { 
@@ -711,7 +746,10 @@ async function loadRanking() {
         const ranking = await response.json();
         
         tableBody.innerHTML = '';
-        if (ranking.length === 0) { tableBody.innerHTML = '<tr><td colspan="3">Ninguém no ranking ainda.</td></tr>'; return; }
+        if (ranking.length === 0) { 
+            tableBody.innerHTML = '<tr><td colspan="3">Ninguém no ranking ainda.</td></tr>'; 
+            return; 
+        }
         
         ranking.forEach((player, index) => {
             const row = tableBody.insertRow();

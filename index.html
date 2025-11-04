@@ -156,18 +156,27 @@
         <div id="page-ranking" class="page"> 
              <div class="content-card"> 
                  <h1 data-translate="ranking_title">Ranking</h1> 
-                 <table id="ranking-table">
-                     <thead>
-                         <tr>
-                             <th data-translate="ranking_header_pos">Posição</th>
-                             <th data-translate="ranking_header_user">Username</th>
-                             <th data-translate="ranking_header_score">Pontuação</th>
-                         </tr>
-                    </thead>
-                     <tbody id="ranking-table-body">
-                         <tr><td colspan="3" data-translate="ranking_loading">Carregando...</td></tr>
-                    </tbody>
-                 </table>
+
+                 <div id="ranking-locked" class="hidden" style="text-align: center; padding: 2rem; background-color: var(--bg-card); border: 1px solid var(--error-color); border-radius: 8px;">
+                     <i class="fa-solid fa-lock" style="font-size: 2.5rem; color: var(--error-color); margin-bottom: 1rem;"></i>
+                     <h3 data-translate="ranking_locked_title">Ranking Bloqueado</h3>
+                     <p data-translate="ranking_locked_desc">Você precisa jogar pelo menos 2 partidas para desbloquear o ranking.</p>
+                 </div>
+
+                 <div id="ranking-content">
+                     <table id="ranking-table">
+                         <thead>
+                             <tr>
+                                 <th data-translate="ranking_header_pos">Posição</th>
+                                 <th data-translate="ranking_header_user">Username</th>
+                                 <th data-translate="ranking_header_score">Pontuação</th>
+                             </tr>
+                        </thead>
+                         <tbody id="ranking-table-body">
+                             <tr><td colspan="3" data-translate="ranking_loading">Carregando...</td></tr>
+                        </tbody>
+                     </table>
+                 </div>
              </div>
         </div>
 

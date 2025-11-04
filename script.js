@@ -168,7 +168,6 @@ async function loadProfileData() {
         
         loadInventory();
         check2FAStatus();
-        loadVipStatus();
 
         try {
             const statsResponse = await apiFetch("/users/me/stats");
@@ -678,12 +677,14 @@ function updateLoginStatus() {
     const loggedOutEl = document.getElementById('auth-logged-out'); 
     const loggedInEl = document.getElementById('auth-logged-in');
     const profileLink = document.getElementById('nav-profile-link');
+    const loyaltyLink = document.getElementById('nav-loyalty-link');
     const profileNameEl = document.getElementById('user-profile-name');
 
     if (token && username) {
         loggedInEl?.classList.remove('hidden');
         loggedOutEl?.classList.add('hidden');
         profileLink?.classList.remove('hidden');
+        loyaltyLink?.classList.remove('hidden');
         if(profileNameEl) profileNameEl.textContent = username;
         loadUserWallet();
         
@@ -691,6 +692,7 @@ function updateLoginStatus() {
         loggedInEl?.classList.add('hidden');
         loggedOutEl?.classList.remove('hidden');
         profileLink?.classList.add('hidden');
+        loyaltyLink?.classList.add('hidden');
         if(currencyEl) currencyEl.textContent = '-';
         if(premiumEl) premiumEl.textContent = '-';
     }
@@ -948,6 +950,9 @@ function showPage(pageId) {
             loadProfileData();
         }
         else if (pageId === 'loja') loadShopItems();
+        else if (pageId === 'loyalty') {
+            loadVipStatus();
+        }
         else if (pageId === 'codex') {
             loadCodexIngredients();
             loadCodexRecipes();

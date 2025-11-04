@@ -43,6 +43,7 @@
                 <a href="#" data-page="ranking"><i class="fa-solid fa-trophy"></i> <span data-translate="nav_ranking">Ranking</span></a>
                 <a href="#" data-page="comunidade"><i class="fa-solid fa-users"></i> <span data-translate="nav_community">Comunidade</span></a>
                 <a href="#" data-page="codex"><i class="fa-solid fa-book-open"></i> <span data-translate="nav_codex">Culinária</span></a>
+                <a href="#" data-page="loyalty" id="nav-loyalty-link" class="hidden"><i class="fa-solid fa-gem"></i> <span data-translate="nav_loyalty">Escala VIP</span></a>
             </nav>
         </div>
         <div class="sidebar-bottom">
@@ -114,26 +115,7 @@
                         <button type="submit" class="register-btn" data-translate="profile_discord_confirm">Confirmar Vinculação</button>
                     </form>
 
-                    <hr class="section-divider">
-                    <h2 data-translate="profile_vip_title">Escala de Lealdade</h2>
-                    <div id="vip-status-container">
-                        <p>
-                            <strong>Nível VIP:</strong> <span id="vip-level" style="color: var(--accent-orange); font-weight: bold;">...</span>
-                            <span style="margin-left: 1rem;">
-                                <strong>Total Gasto:</strong> <span id="vip-total-spent">...</span> Cash
-                            </span>
-                        </p>
-                        <p>
-                            <strong>Progresso para o próximo nível:</strong> 
-                            <span id="vip-progress-bar-text">(... / ...)</span>
-                        </p>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-fill" id="vip-progress-bar" style="width: 0%;"></div>
-                        </div>
-                        <h3 style="margin-top: 2rem;">Recompensas de Nível</h3>
-                        <div id="vip-rewards-list" class="shop-items-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
-                            </div>
-                    </div>
+                    
 
                     <hr class="section-divider">
                     <h2 data-translate="profile_inventory_title">Meu Inventário</h2>
@@ -221,6 +203,31 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div id="page-loyalty" class="page">
+            <div class="content-card">
+                <h1 data-translate="nav_loyalty">Escala VIP</h1>
+
+                <div id="vip-status-container">
+                    <p>
+                        <strong>Nível VIP:</strong> <span id="vip-level" style="color: var(--accent-orange); font-weight: bold;">...</span>
+                        <span style="margin-left: 1rem;">
+                            <strong>Total Gasto:</strong> <span id="vip-total-spent">...</span> Cash
+                        </span>
+                    </p>
+                    <p>
+                        <strong>Progresso para o próximo nível:</strong> 
+                        <span id="vip-progress-bar-text">(... / ...)</span>
+                    </p>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="vip-progress-bar" style="width: 0%;"></div>
+                    </div>
+                    <h3 style="margin-top: 2rem;">Recompensas de Nível</h3>
+                    <div id="vip-rewards-list" class="shop-items-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                        </div>
+                </div>
+                </div>
         </div>
 
         <footer> <p data-translate="footer_copyright">© 2025 AG Studio. Todos os direitos reservados.</p> </footer>

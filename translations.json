@@ -133,6 +133,7 @@
         "codex_recipes": "Receitas",
         "codex_ingredients_title": "Livro de Ingredientes",
         "codex_recipes_title": "Livro de Receitas",
+        "nav_loyalty": "Escala VIP",
         "profile_vip_title": "Escala de Lealdade"
     },
     "en": {
@@ -269,6 +270,7 @@
         "codex_recipes": "Recipes",
         "codex_ingredients_title": "Ingredients Codex",
         "codex_recipes_title": "Recipes Book",
+        "nav_loyalty": "VIP Scale",
         "profile_vip_title": "Loyalty Scale"
     },
     "es": {

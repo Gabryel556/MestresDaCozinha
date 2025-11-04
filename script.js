@@ -392,10 +392,33 @@ async function loadCodexIngredients() {
             card.className = 'codex-card';
             const imgHtml = ing.image_url ? `<img src="${ing.image_url}" alt="${ing.name}" class="shop-item-image">` : '<div class="shop-item-image-placeholder">?</div>';
             
+            let tags_text = "Nenhuma";
+            if (ing.tags && ing.tags.length > 0) {
+                tags_text = ing.tags.map(tag => tag.charAt(0).toUpperCase() + tag.slice(1)).join(', ');
+            }
+
+            let cook_rules_html = `
+                <li style="color: ${ing.is_toxic_raw ? 'var(--error-color)' : 'inherit'};">
+                    <strong>Tóxico Cru:</strong> <span>${ing.is_toxic_raw ? 'Sim' : 'Não'}</span>
+                </li>
+                <li style="color: ${ing.needs_cooking ? 'var(--accent-orange)' : 'inherit'};">
+                    <strong>Precisa Cozinhar:</strong> <span>${ing.needs_cooking ? 'Sim' : 'Não'}</span>
+                </li>
+            `;
+            
+            if (ing.needs_cooking) {
+                cook_rules_html += `
+                    <li><strong>Tempo Mín. (Seg):</strong> <span>${ing.cook_time_min}s</span></li>
+                    <li><strong>Tempo Máx. (Seg):</strong> <span>${ing.cook_time_max}s</span></li>
+                `;
+            }
+
             card.innerHTML = `
                 ${imgHtml}
                 <h3>${ing.name}</h3>
                 <p class="item-description">${ing.description || 'Um ingrediente...'}</p>
+                
+                <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary);">Atributos de Sabor</h4>
                 <ul class="codex-stats">
                     <li><strong>Salgado:</strong> <span>${ing.attr_salty}</span></li>
                     <li><strong>Doce:</strong> <span>${ing.attr_sweet}</span></li>
@@ -404,14 +427,15 @@ async function loadCodexIngredients() {
                     <li><strong>Umami:</strong> <span>${ing.attr_umami}</span></li>
                     <li><strong>Textura:</strong> <span>${ing.attr_texture}</span></li>
                     <li><strong>Aroma:</strong> <span>${ing.attr_aroma}</span></li>
-                    <li style="color: ${ing.is_toxic_raw ? 'var(--error-color)' : 'inherit'};">
-                        <strong>Tóxico Cru:</strong> <span>${ing.is_toxic_raw ? 'Sim' : 'Não'}</span>
-                    </li>
-                    <li style="color: ${ing.needs_cooking ? 'var(--accent-orange)' : 'inherit'};">
-                        <strong>Precisa Cozinhar:</strong> <span>${ing.needs_cooking ? 'Sim' : 'Não'}</span>
-                    </li>
+                </ul>
+                
+                <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary);">Regras de Jogo</h4>
+                <ul class="codex-stats">
+                    <li><strong>Tags:</strong> <span>${tags_text}</span></li>
+                    ${cook_rules_html}
                 </ul>
             `;
+            
             grid.appendChild(card);
         });
         

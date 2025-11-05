@@ -171,26 +171,37 @@
                 </div>
 
                 <div id="ranking-content">
-                    
-                    <div class="form-group" style="margin-bottom: 1.5rem; max-width: 300px;">
-                        <label for="season-select" style="font-size: 1rem; color: var(--text-secondary);">Selecionar Temporada</label>
-                        <select id="season-select" class="form-control" style="width: 100%; padding: 0.8rem; background: #333; border: 1px solid #555; color: white; border-radius: 5px; font-size: 1rem;">
-                            <option value="current">Temporada Atual</option>
+                    <div class="form-grid form-grid-2col" style="margin-bottom: 1.5rem; max-width: 600px; align-items: flex-end;">
+                        <div class="form-group">
+                            <label for="season-select" style="font-size: 1rem; color: var(--text-secondary);">Selecionar Temporada</label>
+                            <select id="season-select" class="form-control" style="width: 100%; padding: 0.8rem; background: #333; border: 1px solid #555; color: white; border-radius: 5px; font-size: 1rem;">
+                                <option value="current">Temporada Atual</option>
+                                </select>
+                        </div>
+                        
+                        <div class="form-group" id="ranking-type-selector-group">
+                            <label for="ranking-type-select" style="font-size: 1rem; color: var(--text-secondary);">Tipo de Ranking</label>
+                            <select id="ranking-type-select" class="form-control" style="width: 100%; padding: 0.8rem; background: #333; border: 1px solid #555; color: white; border-radius: 5px; font-size: 1rem;">
+                                <option value="score">Pontuação (Score)</option>
+                                <option value="wins">Vitórias</option>
+                                <option value="dishes">Pratos Completos</option>
                             </select>
+                        </div>
                     </div>
+                    
                     <table id="ranking-table">
-                         <thead>
-                             <tr>
-                                 <th data-translate="ranking_header_pos">Posição</th>
-                                 <th data-translate="ranking_header_user">Username</th>
-                                 <th data-translate="ranking_header_score">Pontuação</th>
-                             </tr>
+                        <thead>
+                            <tr>
+                                <th data-translate="ranking_header_pos">Posição</th>
+                                <th data-translate="ranking_header_user">Username</th>
+                                <th id="ranking-header-value" data-translate="ranking_header_score">Pontuação</th>
+                            </tr>
                         </thead>
-                         <tbody id="ranking-table-body">
-                             <tr><td colspan="3" data-translate="ranking_loading">Carregando...</td></tr>
+                        <tbody id="ranking-table-body">
+                            <tr><td colspan="3" data-translate="ranking_loading">Carregando...</td></tr>
                         </tbody>
-                     </table>
-                 </div>
+                    </table>
+                </div>
              </div>
         </div>
 

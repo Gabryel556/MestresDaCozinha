@@ -701,8 +701,10 @@ function updateLoginStatus() {
 
 async function loadRankingHistory(seasonName) {
     const tableBody = document.getElementById('ranking-table-body');
-    if (!tableBody) return;
-    
+    const headerValue = document.getElementById('ranking-header-value');
+    if (!tableBody || !headerValue) return;
+
+    headerValue.textContent = 'Pontuação Final';
     tableBody.innerHTML = `<tr><td colspan="3">${translateKey('ranking_loading')}</td></tr>`;
 
     try {
@@ -712,13 +714,13 @@ async function loadRankingHistory(seasonName) {
             throw new Error(errorData.detail || `Erro ${response.status}`);
         }
         const ranking = await response.json();
-        
+
         tableBody.innerHTML = '';
         if (ranking.length === 0) { 
             tableBody.innerHTML = '<tr><td colspan="3">Ninguém no ranking.</td></tr>'; 
             return; 
         }
-        
+
         ranking.forEach((player) => {
             const row = tableBody.insertRow();
             row.insertCell().textContent = `#${player.final_rank}`;
@@ -731,87 +733,69 @@ async function loadRankingHistory(seasonName) {
     }
 }
 
-async function loadRanking() {
+async function loadCurrentLeaderboard(type = 'score') {
     const tableBody = document.getElementById('ranking-table-body');
-    const lockedDiv = document.getElementById('ranking-locked');
-    const contentDiv = document.getElementById('ranking-content');
-    const seasonSelect = document.getElementById('season-select');
-    const token = localStorage.getItem("jwt_token");
+    const headerValue = document.getElementById('ranking-header-value');
+    if (!tableBody || !headerValue) return;
 
-    if (!tableBody || !lockedDiv || !contentDiv || !seasonSelect) { 
-        console.error("Elementos do Ranking (table, locked, content, select) não encontrados."); 
-        return; 
-    }
+    const headerMap = {
+        'score': 'Pontuação',
+        'wins': 'Vitórias',
+        'dishes': 'Pratos Completos'
+    };
+    headerValue.textContent = headerMap[type] || 'Pontuação';
 
-    while (seasonSelect.options.length > 1) {
-        seasonSelect.remove(1);
-    }
-    
-    lockedDiv.classList.add('hidden');
-    contentDiv.classList.remove('hidden');
-    tableBody.innerHTML = `<tr><td colspan="3" data-translate="ranking_loading">${translateKey('ranking_loading')}</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="3">${translateKey('ranking_loading')}</td></tr>`;
 
-    if (token) {
-        try {
-            const statsResponse = await apiFetch("/users/me/stats");
-            const statsData = await statsResponse.json();
-            if (!statsResponse.ok) throw new Error(statsData.detail || 'Erro ao buscar stats');
-
-            if (statsData.total_matches_played <= 1) {
-                lockedDiv.classList.remove('hidden');
-                contentDiv.classList.add('hidden');
-                tableBody.innerHTML = ''; 
-                applyTranslations(); 
-                return; 
-            }
-        } catch (statsError) {
-            console.error("Erro ao verificar stats para o ranking (usuário logado):", statsError);
-        }
-    }
+    const endpoint = (type === 'score') ? '/ranking' : `/game/leaderboard/${type}`;
 
     try {
-        const response = await apiFetch(`/ranking`);
+        const response = await apiFetch(endpoint);
         if (!response.ok) { 
             const errorData = await response.json().catch(() => ({detail: `Erro HTTP ${response.status}`}));
             throw new Error(errorData.detail || `Erro ${response.status}`);
         }
         const ranking = await response.json();
-        
+
         tableBody.innerHTML = '';
         if (ranking.length === 0) { 
             tableBody.innerHTML = '<tr><td colspan="3">Ninguém no ranking ainda.</td></tr>'; 
-        } else {
-            ranking.forEach((player, index) => {
-                const row = tableBody.insertRow();
-                row.insertCell().textContent = `#${index + 1}`;
-                row.insertCell().textContent = player.username;
-                row.insertCell().textContent = player.total_score;
-            });
+            return; 
         }
+
+        ranking.forEach((player, index) => {
+            const row = tableBody.insertRow();
+            row.insertCell().textContent = `#${index + 1}`;
+            row.insertCell().textContent = player.username;
+            row.insertCell().textContent = player.value ?? player.total_score;
+        });
     } catch (error) { 
-        console.error("Erro ao carregar ranking:", error);
+        console.error(`Erro ao carregar leaderboard (${type}):`, error);
         tableBody.innerHTML = `<tr><td colspan="3" style="color: red;">${translateKey('error_ranking_load')} ${error.message}</td></tr>`; 
     }
+}
 
-    try {
-        const seasonsResponse = await apiFetch(`/game/ranking/seasons`);
-        if (seasonsResponse.ok) {
-            const seasons = await seasonsResponse.json();
-            seasons.forEach(season => {
-                const option = document.createElement('option');
-                option.value = season.season_name;
-                option.textContent = season.season_name;
-                seasonSelect.appendChild(option);
-            });
-        }
-    } catch (error) {
-        console.error("Erro ao carregar lista de temporadas:", error);
+async function loadRankingData() {
+    const seasonSelect = document.getElementById('season-select');
+    const rankingTypeSelect = document.getElementById('ranking-type-select');
+    const rankingTypeGroup = document.getElementById('ranking-type-selector-group');
+
+    if (!seasonSelect || !rankingTypeSelect || !rankingTypeGroup) return;
+
+    const season = seasonSelect.value;
+    const type = rankingTypeSelect.value;
+
+    if (season === 'current') {
+        rankingTypeGroup.style.display = 'block';
+        await loadCurrentLeaderboard(type);
+    } else {
+        rankingTypeGroup.style.display = 'none';
+        await loadRankingHistory(season);
     }
 }
 
 async function loadShopItems() {
         document.querySelectorAll('.shop-items-grid').forEach(grid => {
-            // Limpa apenas se não for a grade de destaques, ou se ela ainda não foi carregada
             if (!grid.id === 'featured-items-grid' || grid.innerHTML.includes('<p>')) {
                 grid.innerHTML = '<p>Carregando itens...</p>';
             }
@@ -820,7 +804,6 @@ async function loadShopItems() {
         let hasLoadError = false;
         
         try {
-            // Usar allSettled para que uma falha (ex: destaques) não impeça as outras de carregar
             const results = await Promise.allSettled([
                 (allShopItems.length === 0) ? apiFetch(`/shop/items?item_type=premium`) : Promise.resolve(null),
                 (stripeProducts.length === 0) ? apiFetch(`/shop/stripe-products`) : Promise.resolve(null),
@@ -1106,7 +1089,7 @@ function showPage(pageId) {
     });
 
     if (targetPage?.classList.contains('active')) {
-        if (pageId === 'ranking') loadRanking();
+        if (pageId === 'ranking') loadRankingData();
         else if (pageId === 'profile'){ 
             loadProfileData();
         }
@@ -1417,12 +1400,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     document.getElementById('season-select')?.addEventListener('change', (e) => {
-        const selectedSeason = e.target.value;
-        if (selectedSeason === 'current') {
-            loadRanking();
-        } else {
-            loadRankingHistory(selectedSeason);
-        }
+        loadRankingData();
+    });
+    document.getElementById('ranking-type-select')?.addEventListener('change', (e) => {
+        loadRankingData();
     });
 
     setupShopCategories();

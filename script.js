@@ -8,6 +8,7 @@ let inactivityTimer = null;
 let current2FASecret = null;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 let currentLanguage = localStorage.getItem('preferred_language') || 'pt';
+let featuredItems = [];
 
 /**
  * Wrapper 'fetch' personalizado para adicionar cabeçalhos padrão da API e do Ngrok.
@@ -809,35 +810,58 @@ async function loadRanking() {
 }
 
 async function loadShopItems() {
-    document.querySelectorAll('.shop-items-grid').forEach(grid => grid.innerHTML = '<p>Carregando itens...</p>');
-    let hasLoadError = false;
-    try {
-        if (allShopItems.length === 0) {
-            const internalResponse = await apiFetch(`/shop/items?item_type=premium`);
-            if (!internalResponse.ok) { 
-                 hasLoadError = true; 
-                 const err = await internalResponse.json().catch(() => ({detail:''}));
-                 throw new Error(`Falha itens premium (${internalResponse.status}) ${err.detail}`); 
+        document.querySelectorAll('.shop-items-grid').forEach(grid => {
+            // Limpa apenas se não for a grade de destaques, ou se ela ainda não foi carregada
+            if (!grid.id === 'featured-items-grid' || grid.innerHTML.includes('<p>')) {
+                grid.innerHTML = '<p>Carregando itens...</p>';
             }
-            allShopItems = await internalResponse.json(); 
+        });
+        
+        let hasLoadError = false;
+        
+        try {
+            // Usar allSettled para que uma falha (ex: destaques) não impeça as outras de carregar
+            const results = await Promise.allSettled([
+                (allShopItems.length === 0) ? apiFetch(`/shop/items?item_type=premium`) : Promise.resolve(null),
+                (stripeProducts.length === 0) ? apiFetch(`/shop/stripe-products`) : Promise.resolve(null),
+                (featuredItems.length === 0) ? apiFetch(`/shop/featured_items`) : Promise.resolve(null)
+            ]);
+
+            const [internalRes, stripeRes, featuredRes] = results;
+
+            // 1. Itens Internos (Skins, Pets)
+            if (internalRes.status === 'fulfilled' && internalRes.value) {
+                if (!internalRes.value.ok) throw new Error('Falha itens premium');
+                allShopItems = await internalRes.value.json();
+            } else if (internalRes.status === 'rejected') {
+                hasLoadError = true; console.error("Erro ao carregar itens internos:", internalRes.reason);
+            }
+            
+            // 2. Itens Stripe (Recarga, VIP)
+            if (stripeRes.status === 'fulfilled' && stripeRes.value) {
+                if (!stripeRes.value.ok) throw new Error('Falha itens stripe');
+                stripeProducts = await stripeRes.value.json();
+            } else if (stripeRes.status === 'rejected') {
+                hasLoadError = true; console.error("Erro ao carregar produtos stripe:", stripeRes.reason);
+            }
+            
+            if (featuredRes.status === 'fulfilled' && featuredRes.value) {
+                if (!featuredRes.value.ok) throw new Error('Falha itens destaque');
+                featuredItems = await featuredRes.value.json();
+            } else if (featuredRes.status === 'rejected') {
+                hasLoadError = true; console.error("Erro ao carregar itens em destaque:", featuredRes.reason);
+            }
+
+            renderFeaturedItems();
+            renderShopItems();
+
+        } catch (error) {
+            console.error("Erro ao carregar itens da loja:", error);
+            if (!hasLoadError) {
+                document.querySelectorAll('.shop-items-grid').forEach(grid => grid.innerHTML = `<p style="color: red;">Erro ao carregar produtos: ${error.message}</p>`);
+            }
         }
-        if (stripeProducts.length === 0) {
-             const stripeResponse = await apiFetch(`/shop/stripe-products`);
-             if (!stripeResponse.ok) { 
-                 hasLoadError = true; 
-                 const err = await stripeResponse.json().catch(() => ({detail:''}));
-                 throw new Error(`Falha itens loja (${stripeResponse.status}) ${err.detail}`);
-             }
-             stripeProducts = await stripeResponse.json();
-        }
-        renderShopItems();
-    } catch (error) {
-        console.error("Erro ao carregar itens da loja:", error);
-         if(!document.querySelector('.shop-items-grid p')?.textContent.includes('Erro:')) {
-            document.querySelectorAll('.shop-items-grid').forEach(grid => grid.innerHTML = `<p style="color: red;">Erro ao carregar produtos: ${error.message}</p>`);
-         }
     }
-}
 
 async function handleBuyClick(event) {
     const button = event.target;
@@ -910,6 +934,55 @@ function closeModal(modalId) {
     if(m) m.classList.add('hidden'); 
 }
 
+function renderFeaturedItems() {
+        const container = document.getElementById('featured-items-grid');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        const token = localStorage.getItem("jwt_token");
+
+        if (featuredItems.length === 0) {
+            container.innerHTML = '<p>Nenhum item em destaque no momento.</p>';
+            document.getElementById('featured-items-container').style.display = 'none';
+            return;
+        }
+        
+        document.getElementById('featured-items-container').style.display = 'block';
+
+        featuredItems.forEach(item => {
+            let buttonsHtml = '';
+            const priceNormalText = item.price_normal !== null ? `${item.price_normal} Moedas` : null;
+            const pricePremiumText = item.price_premium !== null ? `${item.price_premium} Cash` : null;
+
+            if (priceNormalText) {
+                 buttonsHtml += `<button class="buy-button buy-normal" data-item-id="${item.item_id}" data-item-name="${item.item_name}" ${!token ? 'disabled' : ''}>Comprar (${priceNormalText})</button>`;
+            }
+            if (pricePremiumText) {
+                 buttonsHtml += `<button class="buy-button buy-premium" data-item-id="${item.item_id}" data-item-name="${item.item_name}" ${!token ? 'disabled' : ''}>Comprar (${pricePremiumText})</button>`;
+            }
+            if (!token && (priceNormalText || pricePremiumText)) {
+                 buttonsHtml += `<span class="requires-login-text"> (Requer Login)</span>`;
+            }
+
+            const card = document.createElement('div'); 
+            card.className = 'shop-item-card featured-item';
+            const imgHtml = item.image_url ? `<img src="${item.image_url}" alt="${item.item_name}" class="shop-item-image">` : '<div class="shop-item-image-placeholder">?</div>';
+            
+            card.innerHTML = `
+                <div class="featured-badge">${item.display_name}</div> 
+                ${imgHtml}
+                <h3>${item.item_name}</h3>
+                <p class="item-description">${item.description || ''}</p>
+                <div class="buy-options">
+                    ${buttonsHtml || '<p>Item não disponível</p>'} 
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        
+        setupBuyButtons();
+    }
+
 function renderShopItems() {
     const recargaContainer = document.getElementById('recarga-items'); const vipContainer = document.getElementById('vip-items');
     const skinsContainer = document.getElementById('skins-items') || createCategoryGrid('skin'); 
@@ -934,8 +1007,13 @@ function renderShopItems() {
         );
         container.appendChild(card);
     });
+
+    const featuredItemIds = featuredItems.map(f => f.item_id);
     
     allShopItems.forEach(item => {
+        if (featuredItemIds.includes(item.item_id)) {
+                return;
+            }
         let container; 
         switch(item.category?.toLowerCase()) { 
             case 'skin': container = skinsContainer; 

@@ -45,6 +45,7 @@
                 <a href="#" data-page="codex"><i class="fa-solid fa-book-open"></i> <span data-translate="nav_codex">Culinária</span></a>
                 <a href="#" data-page="loyalty" id="nav-loyalty-link" class="hidden"><i class="fa-solid fa-gem"></i> <span data-translate="nav_loyalty">Escala VIP</span></a>
                 <a href="#" data-modal-target="support-ticket-modal" id="nav-support-link" class="hidden"><i class="fa-solid fa-headset"></i> <span data-translate="nav_support">Suporte</span></a>
+                <a href="#" data-modal-target="daily-reward-modal" id="nav-daily-reward-link" class="hidden"><i class="fa-solid fa-calendar-check"></i> <span data-translate="nav_daily_reward">Recompensa Diária</span></a>
             </nav>
         </div>
         <div class="sidebar-bottom">
@@ -96,9 +97,11 @@
                     <hr class="section-divider">
                     <h2 data-translate="profile_security_title">Segurança da Conta</h2>
                     <div id="security-2fa-status">
-                         <p><span data-translate="profile_2fa_status">Autenticação de Dois Fatores (2FA):</span> <strong id="2fa-status-text" data-translate="profile_2fa_status_checking">Carregando...</strong></p>
-                         <button id="btn-enable-2fa" class="secondary-button hidden" style="margin-top: 1rem;" data-translate="profile_2fa_enable">Ativar 2FA</button>
-                         <button id="btn-disable-2fa" class="delete-btn hidden" style="margin-top: 1rem;" data-translate="profile_2fa_disable">Desativar 2FA</button>
+                        <p><span data-translate="profile_2fa_status">Autenticação de Dois Fatores (2FA):</span> <strong id="2fa-status-text" data-translate="profile_2fa_status_checking">Carregando...</strong></p>
+                        <button id="btn-enable-2fa" class="secondary-button hidden" style="margin-top: 1rem;" data-translate="profile_2fa_enable">Ativar 2FA</button>
+                        <button id="btn-disable-2fa" class="delete-btn hidden" style="margin-top: 1rem;" data-translate="profile_2fa_disable">Desativar 2FA</button>
+                        <button id="btn-force-disconnect" class="delete-btn" style="margin-top: 1.5rem; background-color: var(--accent-steel-blue);" data-translate="profile_force_disconnect">Forçar Desconexão do Jogo</button>
+                        <p class="form-instruction" style="text-align: left; margin-top: 0.5rem;" data-translate="profile_force_disconnect_desc">Se seu personagem ficou "preso" online após um crash, clique aqui.</p>
                     </div>
 
                     <hr class="section-divider">
@@ -416,6 +419,16 @@
                 <button type="submit" class="register-btn" data-translate="modal_support_button">Enviar Ticket</button>
             </form>
             <div id="support-ticket-error" class="error-message"></div>
+        </div>
+    </div>
+    <div id="daily-reward-modal" class="modal hidden">
+        <div class="modal-overlay" data-modal-close="daily-reward-modal"></div>
+        <div class="modal-container">
+            <button class="modal-close-btn" data-modal-close="daily-reward-modal">&times;</button>
+            <h2 data-translate="modal_daily_title">Recompensa Diária</h2>
+            <div id="daily-reward-content">
+                <p data-translate="modal_daily_loading">Carregando seu status...</p>
+            </div>
         </div>
     </div>
 

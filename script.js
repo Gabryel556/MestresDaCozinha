@@ -681,6 +681,7 @@ function updateLoginStatus() {
     const loyaltyLink = document.getElementById('nav-loyalty-link');
     const supportLink = document.getElementById('nav-support-link');
     const profileNameEl = document.getElementById('user-profile-name');
+    const dailyRewardLink = document.getElementById('nav-daily-reward-link');
 
     if (token && username) {
         loggedInEl?.classList.remove('hidden');
@@ -688,6 +689,7 @@ function updateLoginStatus() {
         profileLink?.classList.remove('hidden');
         loyaltyLink?.classList.remove('hidden');
         supportLink?.classList.remove('hidden');
+        dailyRewardLink?.classList.remove('hidden');
         if(profileNameEl) profileNameEl.textContent = username;
         loadUserWallet();
         
@@ -697,6 +699,7 @@ function updateLoginStatus() {
         profileLink?.classList.add('hidden');
         loyaltyLink?.classList.add('hidden');
         supportLink?.classList.add('hidden');
+        dailyRewardLink?.classList.add('hidden');
         if(currencyEl) currencyEl.textContent = '-';
         if(premiumEl) premiumEl.textContent = '-';
     }
@@ -815,7 +818,6 @@ async function loadShopItems() {
 
             const [internalRes, stripeRes, featuredRes] = results;
 
-            // 1. Itens Internos (Skins, Pets)
             if (internalRes.status === 'fulfilled' && internalRes.value) {
                 if (!internalRes.value.ok) throw new Error('Falha itens premium');
                 allShopItems = await internalRes.value.json();
@@ -823,7 +825,6 @@ async function loadShopItems() {
                 hasLoadError = true; console.error("Erro ao carregar itens internos:", internalRes.reason);
             }
             
-            // 2. Itens Stripe (Recarga, VIP)
             if (stripeRes.status === 'fulfilled' && stripeRes.value) {
                 if (!stripeRes.value.ok) throw new Error('Falha itens stripe');
                 stripeProducts = await stripeRes.value.json();
@@ -1138,6 +1139,65 @@ function startInactivityTimer() {
     }, INACTIVITY_TIMEOUT_MS);
 }
 
+async function loadDailyRewardStatus() {
+    const content = document.getElementById('daily-reward-content');
+    content.innerHTML = '<p data-translate="modal_daily_loading">Carregando seu status...</p>';
+    try {
+        const response = await apiFetch("/game/daily_login/status");
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail);
+
+        let rewardHtml = '<h4>Recompensa de Hoje (Dia ' + (data.current_streak_day) + ')</h4>';
+        if (data.today_reward) {
+            const r = data.today_reward;
+            let rewards = [];
+            if (r.reward_currency_normal > 0) rewards.push(r.reward_currency_normal + ' Moedas');
+            if (r.reward_currency_premium > 0) rewards.push(r.reward_currency_premium + ' Cash');
+            if (r.item_name) rewards.push(r.item_name);
+            rewardHtml += `<p style="font-size: 1.1rem; color: var(--accent-orange);">${rewards.join(', ')}</p>`;
+        } else {
+            rewardHtml += '<p>Nenhuma recompensa configurada para este dia.</p>';
+        }
+
+        if (data.can_claim_today) {
+            content.innerHTML = `
+                ${rewardHtml}
+                <button id="claim-daily-reward-btn" class="register-btn" style="width:100%; margin-top: 1rem;">Resgatar Recompensa</button>
+            `;
+            document.getElementById('claim-daily-reward-btn').addEventListener('click', claimDailyReward);
+        } else {
+            const hours = Math.floor(data.seconds_until_next_claim / 3600);
+            const minutes = Math.floor((data.seconds_until_next_claim % 3600) / 60);
+            content.innerHTML = `
+                ${rewardHtml}
+                <p style="margin-top: 1rem;">Você já resgatou sua recompensa hoje.</p>
+                <p>Próximo resgate em: <strong>${hours}h ${minutes}m</strong></p>
+            `;
+        }
+    } catch (error) {
+        content.innerHTML = `<p class="error-message">Erro ao carregar recompensas: ${error.message}</p>`;
+    }
+}
+
+async function claimDailyReward() {
+    const button = document.getElementById('claim-daily-reward-btn');
+    button.disabled = true;
+    button.textContent = 'Processando...';
+    try {
+        const response = await apiFetch("/game/daily_login/claim", { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail);
+
+        alert('Recompensa resgatada com sucesso!');
+        loadDailyRewardStatus();
+        loadUserWallet();
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+        button.disabled = false;
+        button.textContent = 'Resgatar Recompensa';
+    }
+}
+
 function translateKey(key, replacements = {}) {
     let text = translations[currentLanguage]?.[key] || translations['pt']?.[key] || key;
     
@@ -1412,7 +1472,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
+    const forceDisconnectBtn = document.getElementById('btn-force-disconnect');
+    if (forceDisconnectBtn) {
+        forceDisconnectBtn.addEventListener('click', async () => {
+            if (!confirm("Tem certeza que deseja forçar sua desconexão?\n\nUse isso apenas se seu personagem estiver 'preso' no servidor.")) {
+                return;
+            }
+            try {
+                const response = await apiFetch(`/users/me/force_disconnect`, { method: 'POST' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail);
+                alert(result.message);
+            } catch (error) {
+                alert(`Erro: ${error.message}`);
+            }
+        });
+    }
     
     btnEnable2FA?.addEventListener('click', start2FASetup);
     btnDisable2FA?.addEventListener('click', disable2FA);
@@ -1447,6 +1522,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('ranking-type-select')?.addEventListener('change', (e) => {
         loadRankingData();
+    });
+    document.querySelector('#nav-daily-reward-link')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        loadDailyRewardStatus();
     });
 
     setupShopCategories();

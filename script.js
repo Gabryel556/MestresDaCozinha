@@ -679,6 +679,7 @@ function updateLoginStatus() {
     const loggedInEl = document.getElementById('auth-logged-in');
     const profileLink = document.getElementById('nav-profile-link');
     const loyaltyLink = document.getElementById('nav-loyalty-link');
+    const supportLink = document.getElementById('nav-support-link');
     const profileNameEl = document.getElementById('user-profile-name');
 
     if (token && username) {
@@ -686,6 +687,7 @@ function updateLoginStatus() {
         loggedOutEl?.classList.add('hidden');
         profileLink?.classList.remove('hidden');
         loyaltyLink?.classList.remove('hidden');
+        supportLink?.classList.remove('hidden');
         if(profileNameEl) profileNameEl.textContent = username;
         loadUserWallet();
         
@@ -694,6 +696,7 @@ function updateLoginStatus() {
         loggedOutEl?.classList.remove('hidden');
         profileLink?.classList.add('hidden');
         loyaltyLink?.classList.add('hidden');
+        supportLink?.classList.add('hidden');
         if(currencyEl) currencyEl.textContent = '-';
         if(premiumEl) premiumEl.textContent = '-';
     }
@@ -1364,6 +1367,46 @@ document.addEventListener('DOMContentLoaded', () => {
                     forgotPassMessage.textContent = `Erro: ${error.message}`;
                     forgotPassMessage.style.color = 'var(--error-color)';
                 }
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
+    const supportTicketForm = document.getElementById('support-ticket-form');
+    if (supportTicketForm) {
+        supportTicketForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorDiv = document.getElementById('support-ticket-error');
+            const submitBtn = supportTicketForm.querySelector('button[type="submit"]');
+            errorDiv.textContent = '';
+            submitBtn.disabled = true;
+
+            try {
+                const data = {
+                    ticket_type: document.getElementById('support-ticket-type').value,
+                    subject: document.getElementById('support-ticket-subject').value,
+                    message: document.getElementById('support-ticket-message').value
+                };
+
+                if (!data.ticket_type) {
+                    throw new Error("Por favor, selecione uma categoria.");
+                }
+
+                const response = await apiFetch(`/game/support/create_ticket`, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Erro no servidor');
+
+                alert(result.message);
+                supportTicketForm.reset();
+                closeModal('support-ticket-modal');
+
+            } catch (error) {
+                console.error("Erro ao criar ticket:", error);
+                errorDiv.textContent = `Erro: ${error.message}`;
             } finally {
                 submitBtn.disabled = false;
             }

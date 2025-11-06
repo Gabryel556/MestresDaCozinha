@@ -44,6 +44,7 @@
                 <a href="#" data-page="comunidade"><i class="fa-solid fa-users"></i> <span data-translate="nav_community">Comunidade</span></a>
                 <a href="#" data-page="codex"><i class="fa-solid fa-book-open"></i> <span data-translate="nav_codex">Culinária</span></a>
                 <a href="#" data-page="loyalty" id="nav-loyalty-link" class="hidden"><i class="fa-solid fa-gem"></i> <span data-translate="nav_loyalty">Escala VIP</span></a>
+                <a href="#" data-modal-target="support-ticket-modal" id="nav-support-link" class="hidden"><i class="fa-solid fa-headset"></i> <span data-translate="nav_support">Suporte</span></a>
             </nav>
         </div>
         <div class="sidebar-bottom">
@@ -387,6 +388,34 @@
                 <button type="submit" class="register-btn" data-translate="modal_forgot_pass_button">Enviar Link</button>
             </form>
             <div id="forgot-pass-message" class="error-message" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+    <div id="support-ticket-modal" class="modal hidden">
+        <div class="modal-overlay" data-modal-close="support-ticket-modal"></div>
+        <div class="modal-container">
+            <button class="modal-close-btn" data-modal-close="support-ticket-modal">&times;</button>
+            <h2 data-translate="modal_support_title">Abrir Ticket de Suporte</h2>
+            <form id="support-ticket-form">
+                <div class="form-group">
+                    <label for="support-ticket-type" data-translate="modal_support_category">Categoria</label>
+                    <select id="support-ticket-type" class="form-control" style="width: 100%; padding: 0.8rem; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 8px; font-size: 1rem;" required>
+                        <option value="" data-translate="modal_support_select">-- Selecione um Tópico --</option>
+                        <option value="support_technical" data-translate="modal_support_cat_tech">Problema Técnico / Bug</option>
+                        <option value="support_payment" data-translate="modal_support_cat_payment">Pagamento / Compra</option>
+                        <option value="support_moderation" data-translate="modal_support_cat_report">Denúncia / Moderação</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="support-ticket-subject" data-translate="modal_support_subject">Assunto</label>
+                    <input type="text" id="support-ticket-subject" required>
+                </div>
+                <div class="form-group">
+                    <label for="support-ticket-message" data-translate="modal_support_message">Descreva seu problema</label>
+                    <textarea id="support-ticket-message" rows="5" style="width: 100%; padding: 0.8rem; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; color: var(--text-primary); font-size: 1rem; font-family: var(--font-body);" required></textarea>
+                </div>
+                <button type="submit" class="register-btn" data-translate="modal_support_button">Enviar Ticket</button>
+            </form>
+            <div id="support-ticket-error" class="error-message"></div>
         </div>
     </div>
 

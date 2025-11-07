@@ -483,7 +483,7 @@ async function loadCodexRecipes() {
         
     } catch (error) {
         console.error("Erro ao carregar receitas:", error);
-        grid.innerHTML = `<p style="color: var(--error-color);">Erro ao carregar receitas: ${error.message}</p>`;
+        grid.innerHTML = `<p style="color: var(--error-color);">Erro ao carregar receitas: Faça Login para ter acesso</p>`;
     }
 }
 

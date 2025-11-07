@@ -44,7 +44,8 @@
                 <a href="#" data-page="comunidade"><i class="fa-solid fa-users"></i> <span data-translate="nav_community">Comunidade</span></a>
                 <a href="#" data-page="codex"><i class="fa-solid fa-book-open"></i> <span data-translate="nav_codex">Culinária</span></a>
                 <a href="#" data-page="loyalty" id="nav-loyalty-link" class="hidden"><i class="fa-solid fa-gem"></i> <span data-translate="nav_loyalty">Escala VIP</span></a>
-                <a href="#" data-modal-target="support-ticket-modal" id="nav-support-link" class="hidden"><i class="fa-solid fa-headset"></i> <span data-translate="nav_support">Suporte</span></a>
+                <a href="#" data-page="support" id="nav-support-link" class="hidden"><i class="fa-solid fa-headset"></i> <span data-translate="nav_support">Suporte</span></a>
+                <a href="#" data-modal-target="mailbox-modal" id="nav-mailbox-link" class="hidden"><i class="fa-solid fa-envelope"></i> <span data-translate="nav_mailbox">Correio</span></a>
                 <a href="#" data-modal-target="daily-reward-modal" id="nav-daily-reward-link" class="hidden"><i class="fa-solid fa-calendar-check"></i> <span data-translate="nav_daily_reward">Recompensa Diária</span></a>
             </nav>
         </div>
@@ -267,6 +268,29 @@
                 </div>
                 </div>
         </div>
+        <div id="page-support" class="page">
+            <div class="content-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h1 data-translate="nav_support">Suporte</h1>
+                    <button class="register-btn" data-modal-target="support-ticket-modal" data-translate="modal_support_new">Abrir Novo Ticket</button>
+                </div>
+                <h3 data-translate="modal_support_my_tickets">Meus Tickets</h3>
+                <div id="support-ticket-list-loading"><p data-translate="modal_support_loading">Carregando seus tickets...</p></div>
+                <div id="support-ticket-list-error" class="error-message hidden"></div>
+                <table id="support-ticket-table" class="ranking-table hidden" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th data-translate="modal_support_col_id">ID</th>
+                            <th data-translate="modal_support_col_subject">Assunto</th>
+                            <th data-translate="modal_support_col_status">Status</th>
+                            <th data-translate="modal_support_col_updated">Última Atualização</th>
+                            <th data-translate="modal_support_col_actions">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="support-ticket-list-body"></tbody>
+                </table>
+            </div>
+        </div>
 
         <footer> <p data-translate="footer_copyright">© 2025 AG Studio. Todos os direitos reservados.</p> </footer>
     </main>
@@ -429,6 +453,34 @@
             <div id="daily-reward-content">
                 <p data-translate="modal_daily_loading">Carregando seu status...</p>
             </div>
+        </div>
+    </div>
+    <div id="mailbox-modal" class="modal hidden">
+        <div class="modal-overlay" data-modal-close="mailbox-modal"></div>
+        <div class="modal-container" style="max-width: 600px;">
+            <button class="modal-close-btn" data-modal-close="mailbox-modal">&times;</button>
+            <h2 data-translate="modal_mailbox_title">Caixa de Correio</h2>
+            <div id="mailbox-content" class="modal-scrollable-content">
+                <p data-translate="modal_mailbox_loading">Carregando...</p>
+            </div>
+        </div>
+    </div>
+    <div id="view-ticket-modal" class="modal hidden">
+        <div class="modal-overlay" data-modal-close="view-ticket-modal"></div>
+        <div class="modal-container" style="max-width: 700px;">
+            <button class="modal-close-btn" data-modal-close="view-ticket-modal">&times;</button>
+            <h2 id="view-ticket-modal-title">Ticket ID: ...</h2>
+            <div id="view-ticket-messages-view" class="modal-scrollable-content" style="max-height: 400px; background: #222; padding: 10px; border-radius: 8px;">
+                </div>
+            <form id="view-ticket-reply-form" style="margin-top: 1rem;">
+                <input type="hidden" id="reply-ticket-id">
+                <div class="form-group">
+                    <label for="view-ticket-reply-message" data-translate="modal_support_reply_label">Sua Resposta</label>
+                    <textarea id="view-ticket-reply-message" rows="4" style="width: 100%; padding: 0.8rem; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; color: var(--text-primary); font-size: 1rem; font-family: var(--font-body);" required></textarea>
+                </div>
+                <button type="submit" class="register-btn" data-translate="modal_support_reply_button">Enviar Resposta</button>
+                <div id="view-ticket-reply-error" class="error-message"></div>
+            </form>
         </div>
     </div>
 

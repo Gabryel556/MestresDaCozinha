@@ -680,6 +680,7 @@ function updateLoginStatus() {
     const profileLink = document.getElementById('nav-profile-link');
     const loyaltyLink = document.getElementById('nav-loyalty-link');
     const supportLink = document.getElementById('nav-support-link');
+    const mailboxLink = document.getElementById('nav-mailbox-link');
     const profileNameEl = document.getElementById('user-profile-name');
     const dailyRewardLink = document.getElementById('nav-daily-reward-link');
 
@@ -690,6 +691,7 @@ function updateLoginStatus() {
         loyaltyLink?.classList.remove('hidden');
         supportLink?.classList.remove('hidden');
         dailyRewardLink?.classList.remove('hidden');
+        mailboxLink?.classList.remove('hidden');
         if(profileNameEl) profileNameEl.textContent = username;
         loadUserWallet();
         
@@ -700,6 +702,7 @@ function updateLoginStatus() {
         loyaltyLink?.classList.add('hidden');
         supportLink?.classList.add('hidden');
         dailyRewardLink?.classList.add('hidden');
+        mailboxLink?.classList.add('hidden');
         if(currencyEl) currencyEl.textContent = '-';
         if(premiumEl) premiumEl.textContent = '-';
     }
@@ -1105,6 +1108,9 @@ function showPage(pageId) {
             loadCodexIngredients();
             loadCodexRecipes();
         }
+        else if (pageId === 'support') {
+            loadSupportTickets();
+        }
     }
 }
 
@@ -1175,7 +1181,7 @@ async function loadDailyRewardStatus() {
             `;
         }
     } catch (error) {
-        content.innerHTML = `<p class="error-message">Erro ao carregar recompensas: ${error.message}</p>`;
+        content.innerHTML = `<p class="error-message">O sistema de Recompensa Diária está em manutenção. Tente novamente mais tarde.</p>`;
     }
 }
 
@@ -1195,6 +1201,213 @@ async function claimDailyReward() {
         alert(`Erro: ${error.message}`);
         button.disabled = false;
         button.textContent = 'Resgatar Recompensa';
+    }
+}
+
+async function loadMailbox() {
+    const content = document.getElementById('mailbox-content');
+    content.innerHTML = `<p data-translate="modal_mailbox_loading">Carregando...</p>`;
+    applyTranslations();
+    
+    try {
+        const response = await apiFetch("/game/mailbox/check");
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail);
+
+        if (data.length === 0) {
+            content.innerHTML = '<p data-translate="modal_mailbox_empty">Sua caixa de correio está vazia.</p>';
+            applyTranslations();
+            return;
+        }
+        
+        content.innerHTML = '';
+        data.forEach(mail => {
+            const card = document.createElement('div');
+            card.className = 'codex-card';
+            
+            let rewards = [];
+            if (mail.reward_currency_normal > 0) rewards.push(`${mail.reward_currency_normal} Moedas`);
+            if (mail.reward_currency_premium > 0) rewards.push(`${mail.reward_currency_premium} Cash`);
+            
+            if (mail.reward_item_id > 0 && mail.item_name) {
+                rewards.push(`${mail.item_name} (x${mail.reward_item_quantity})`);
+            } else if (mail.reward_item_id > 0) {
+                rewards.push(`Item ID ${mail.reward_item_id} (x${mail.reward_item_quantity})`);
+            }
+            
+            card.innerHTML = `
+                <h3 style="color: var(--text-primary);">${mail.subject}</h3>
+                <small style="color:var(--text-secondary); font-size: 0.8rem;">${new Date(mail.sent_at).toLocaleString('pt-BR')}</small>
+                <p class="item-description" style="margin: 0.75rem 0;">${mail.message || 'Sem mensagem.'}</p>
+                ${rewards.length > 0 ? `<strong data-translate="modal_mailbox_rewards">Recompensas:</strong><p style="color:var(--accent-orange); margin-top: 5px;">${rewards.join(', ')}</p>` : ''}
+                <button class="register-btn claim-mail-btn" data-mail-id="${mail.mail_id}" style="width: 100%; margin-top: 1rem;">
+                    ${rewards.length > 0 ? translateKey('modal_mailbox_claim') : translateKey('modal_mailbox_read')}
+                </button>
+            `;
+            content.appendChild(card);
+        });
+        
+        content.querySelectorAll('.claim-mail-btn').forEach(btn => {
+            btn.addEventListener('click', claimMailItem);
+        });
+        
+    } catch (error) {
+        content.innerHTML = `<p class="error-message">Erro ao carregar correio: ${error.message}</p>`;
+    }
+}
+
+async function claimMailItem(event) {
+    const button = event.target;
+    const mailId = button.dataset.mailId;
+    button.disabled = true;
+    button.textContent = 'Processando...';
+    try {
+        const response = await apiFetch(`/game/mailbox/claim/${mailId}`, { method: 'POST' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail);
+        
+        alert(result.message);
+        loadUserWallet();
+        button.closest('.codex-card').remove();
+        
+        if (document.getElementById('mailbox-content').childElementCount === 0) {
+            document.getElementById('mailbox-content').innerHTML = '<p data-translate="modal_mailbox_empty">Sua caixa de correio está vazia.</p>';
+            applyTranslations();
+        }
+        
+    } catch (error) {
+        alert(`Erro: ${error.message}`);
+        button.disabled = false;
+        button.textContent = 'Tentar Novamente';
+    }
+}
+
+async function loadSupportTickets() {
+    const tableBody = document.getElementById('support-ticket-list-body');
+    const loading = document.getElementById('support-ticket-list-loading');
+    const error = document.getElementById('support-ticket-list-error');
+    const table = document.getElementById('support-ticket-table');
+
+    loading.classList.remove('hidden');
+    error.classList.add('hidden');
+    table.classList.add('hidden');
+    tableBody.innerHTML = '';
+
+    try {
+        const response = await apiFetch("/game/support/my_tickets");
+        const tickets = await response.json();
+        if (!response.ok) throw new Error(tickets.detail);
+
+        loading.classList.add('hidden');
+        table.classList.remove('hidden');
+
+        if (tickets.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" data-translate="modal_support_no_tickets">Você não abriu nenhum ticket.</td></tr>';
+            applyTranslations();
+            return;
+        }
+
+        tickets.forEach(ticket => {
+            const row = tableBody.insertRow();
+            const statusKey = `modal_support_status_${ticket.status.toLowerCase()}`;
+            row.innerHTML = `
+                <td>${ticket.ticket_id}</td>
+                <td>${ticket.subject}</td>
+                <td><strong class="status-${ticket.status.toLowerCase()}" data-translate="${statusKey}">${ticket.status}</strong></td>
+                <td>${new Date(ticket.updated_at).toLocaleString('pt-BR')}</td>
+                <td class="action-buttons">
+                    <button class="secondary-button view-ticket-btn" data-ticket-id="${ticket.ticket_id}" data-ticket-subject="${ticket.subject}">Ver/Responder</button>
+                </td>
+            `;
+        });
+
+        tableBody.querySelectorAll('.view-ticket-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.target.dataset.ticketId;
+                const subject = e.target.dataset.ticketSubject;
+                openTicketViewModal(id, subject);
+            });
+        });
+        applyTranslations();
+
+    } catch (err) {
+        loading.classList.add('hidden');
+        error.classList.remove('hidden');
+        error.textContent = `Erro ao carregar tickets: ${err.message}`;
+    }
+}
+
+async function openTicketViewModal(ticketId, subject) {
+    const title = document.getElementById('view-ticket-modal-title');
+    const messagesView = document.getElementById('view-ticket-messages-view');
+    const form = document.getElementById('view-ticket-reply-form');
+    const errorDiv = document.getElementById('view-ticket-reply-error');
+
+    title.textContent = `Ticket ID: ${ticketId} - ${subject}`;
+    messagesView.innerHTML = '<p>Carregando mensagens...</p>';
+    form.reset();
+    errorDiv.textContent = '';
+    document.getElementById('reply-ticket-id').value = ticketId;
+
+    openModal('view-ticket-modal');
+
+    try {
+        const response = await apiFetch(`/game/support/my_tickets/${ticket_id}/messages`);
+        const messages = await response.json();
+        if (!response.ok) throw new Error(messages.detail);
+
+        messagesView.innerHTML = '';
+        if (messages.length === 0) {
+            messagesView.innerHTML = '<p>Nenhuma mensagem neste ticket ainda.</p>';
+            return;
+        }
+
+        messages.forEach(msg => {
+            const sender = msg.admin_username ? msg.admin_username : msg.username;
+            const senderType = msg.admin_username ? 'Admin' : 'Você';
+            const senderClass = msg.admin_username ? 'chat-admin' : 'chat-user';
+
+            messagesView.innerHTML += `
+                <div class="ticket-message ${senderClass}">
+                    <small><strong>${sender}</strong> (${senderType}) - ${new Date(msg.created_at).toLocaleString('pt-BR')}</small>
+                    <p>${msg.message_content.replace(/\n/g, '<br>')}</p>
+                </div>
+            `;
+        });
+        messagesView.scrollTop = messagesView.scrollHeight;
+    } catch (err) {
+        messagesView.innerHTML = `<p class="error-message">Erro ao carregar mensagens: ${err.message}</p>`;
+    }
+}
+
+async function handleTicketReply(event) {
+    event.preventDefault();
+    const form = event.target;
+    const button = form.querySelector('button[type="submit"]');
+    const errorDiv = document.getElementById('view-ticket-reply-error');
+    const ticketId = document.getElementById('reply-ticket-id').value;
+    const message = document.getElementById('view-ticket-reply-message').value;
+
+    button.disabled = true;
+    errorDiv.textContent = '';
+
+    try {
+        const response = await apiFetch(`/game/support/my_tickets/${ticketId}/reply`, {
+            method: 'POST',
+            body: JSON.stringify({ message: message })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail);
+
+        form.reset();
+        const title = document.getElementById('view-ticket-modal-title').textContent.split(' - ')[1] || '...';
+        openTicketViewModal(ticketId, title);
+        loadSupportTickets();
+
+    } catch (err) {
+        errorDiv.textContent = `Erro: ${err.message}`;
+    } finally {
+        button.disabled = false;
     }
 }
 
@@ -1527,6 +1740,18 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         loadDailyRewardStatus();
     });
+    document.querySelector('#nav-mailbox-link')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (localStorage.getItem("jwt_token")) {
+            loadMailbox();
+        } else {
+            openModal('login-modal');
+        }
+    });
+    const viewTicketReplyForm = document.getElementById('view-ticket-reply-form');
+    if (viewTicketReplyForm) {
+        viewTicketReplyForm.addEventListener('submit', handleTicketReply);
+    }
 
     setupShopCategories();
     loadTranslations();

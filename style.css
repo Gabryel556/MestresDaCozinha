@@ -848,7 +848,6 @@ hr.section-divider {
     cursor: not-allowed;
 }
 
-/* --- Estilos do Livro (Codex) --- */
 .codex-card {
     background-color: #2a2a2a;
     border: 1px solid #444;
@@ -857,17 +856,20 @@ hr.section-divider {
     display: flex;
     flex-direction: column;
 }
+
 .codex-card h3 {
     color: var(--accent-orange);
     margin-top: 0;
     margin-bottom: 0.5rem;
 }
-.codex-card .item-description { /* Reutiliza estilo da loja */
+
+.codex-card .item-description {
     color: var(--text-secondary);
     font-size: 0.9rem;
     margin-bottom: 1rem;
     flex-grow: 1;
 }
+
 .codex-stats {
     font-size: 0.9rem;
     color: var(--text-secondary);
@@ -875,26 +877,92 @@ hr.section-divider {
     padding-left: 0;
     margin: 0;
 }
+
 .codex-stats li {
     display: flex;
     justify-content: space-between;
     padding: 2px 0;
     border-bottom: 1px dashed #333;
 }
+
 .codex-stats li strong {
     color: var(--text-primary);
     margin-right: 10px;
 }
+
 .codex-recipe-ingredients {
     margin-top: 1rem;
     border-top: 1px solid #444;
     padding-top: 1rem;
 }
+
 .codex-recipe-ingredients strong {
     color: var(--text-primary);
 }
+
 .codex-recipe-ingredients ul {
     padding-left: 20px;
     margin: 0.5rem 0 0 0;
     color: var(--text-secondary);
+}
+
+.modal-scrollable-content {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 10px;
+    margin-top: 1rem;
+}
+
+.ticket-message {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.ticket-message.chat-user {
+    background-color: #3a4a5a;
+}
+
+.ticket-message.chat-admin {
+    background-color: #4a4a4a;
+}
+
+.ticket-message strong {
+    color: var(--accent-orange);
+}
+
+.ticket-message small {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 5px;
+}
+
+.ticket-message p {
+    margin: 0;
+    word-wrap: break-word;
+}
+
+.status-open, .status-user_reply {
+    color: var(--accent-orange);
+    font-weight: bold;
+}
+
+.status-admin_reply {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.status-closed {
+    color: var(--text-secondary);
+}
+
+#support-ticket-table {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+#support-ticket-table .action-buttons .secondary-button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.9rem;
 }

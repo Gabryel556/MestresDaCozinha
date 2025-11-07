@@ -50,6 +50,31 @@ async function apiFetch(endpoint, options = {}) {
     return fetch(`${API_URL}${endpoint}`, fetchOptions);
 }
 
+/**
+ * Insere texto de forma segura em um elemento, prevenindo XSS.
+ * Converte quebras de linha (\n) em tags <br>.
+ * @param {HTMLElement} element O elemento HTML onde o texto será inserido.
+ * @param {string} text O texto (potencialmente inseguro) a ser inserido.
+ */
+function setSafeHTML(element, text) {
+    if (!element) return;
+    
+    element.textContent = ''; 
+    
+    if (typeof text !== 'string' || text.length === 0) {
+        return;
+    }
+
+    const lines = text.split('\n');
+    
+    lines.forEach((line, index) => {
+        element.appendChild(document.createTextNode(line));
+        if (index < lines.length - 1) {
+            element.appendChild(document.createElement('br'));
+        }
+    });
+}
+
 async function performLogin(username, password) {
     try {
         console.log("Chamando API /website/login...")
@@ -878,6 +903,42 @@ async function handleBuyClick(event) {
     }
 }
 
+async function handleCloseTicket(event) {
+    event.preventDefault();
+    const button = event.target;
+    const ticketId = document.getElementById('reply-ticket-id').value;
+    const errorDiv = document.getElementById('view-ticket-reply-error');
+
+    if (!ticketId) {
+        errorDiv.textContent = "Erro: ID do Ticket não encontrado.";
+        return;
+    }
+
+    if (!confirm(translateKey('alert_support_close_confirm', { ticketId: ticketId }))) {
+        return;
+    }
+
+    button.disabled = true;
+    errorDiv.textContent = '';
+
+    try {
+        const response = await apiFetch(`/game/support/my_tickets/${ticketId}/close`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail);
+
+        alert(result.message);
+        closeModal('view-ticket-modal');
+        loadSupportTickets();
+
+    } catch (err) {
+        errorDiv.textContent = `Erro: ${err.message}`;
+    } finally {
+        button.disabled = false;
+    }
+}
+
 async function handleBuyInternalClick(event) {
     const button = event.target;
     const itemId = parseInt(button.dataset.itemId); 
@@ -1235,12 +1296,14 @@ async function loadMailbox() {
             card.innerHTML = `
                 <h3 style="color: var(--text-primary);">${mail.subject}</h3>
                 <small style="color:var(--text-secondary); font-size: 0.8rem;">${new Date(mail.sent_at).toLocaleString('pt-BR')}</small>
-                <p class="item-description" style="margin: 0.75rem 0;">${mail.message || 'Sem mensagem.'}</p>
-                ${rewards.length > 0 ? `<strong data-translate="modal_mailbox_rewards">Recompensas:</strong><p style="color:var(--accent-orange); margin-top: 5px;">${rewards.join(', ')}</p>` : ''}
+                <p class="item-description" style="margin: 0.75rem 0;"></p> ${rewards.length > 0 ? `<strong data-translate="modal_mailbox_rewards">Recompensas:</strong><p style="color:var(--accent-orange); margin-top: 5px;">${rewards.join(', ')}</p>` : ''}
                 <button class="register-btn claim-mail-btn" data-mail-id="${mail.mail_id}" style="width: 100%; margin-top: 1rem;">
                     ${rewards.length > 0 ? translateKey('modal_mailbox_claim') : translateKey('modal_mailbox_read')}
                 </button>
             `;
+
+            setSafeHTML(card.querySelector('.item-description'), mail.message || 'Sem mensagem.');
+
             content.appendChild(card);
         });
         
@@ -1364,12 +1427,21 @@ async function openTicketViewModal(ticketId, subject) {
             const senderType = msg.admin_username ? 'Admin' : 'Você';
             const senderClass = msg.admin_username ? 'chat-admin' : 'chat-user';
 
-            messagesView.innerHTML += `
-                <div class="ticket-message ${senderClass}">
-                    <small><strong>${sender}</strong> (${senderType}) - ${new Date(msg.created_at).toLocaleString('pt-BR')}</small>
-                    <p>${msg.message_content.replace(/\n/g, '<br>')}</p>
-                </div>
-            `;
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `ticket-message ${senderClass}`;
+
+            const small = document.createElement('small');
+            const strong = document.createElement('strong');
+            strong.textContent = sender;
+            small.appendChild(strong);
+            small.appendChild(document.createTextNode(` (${senderType}) - ${new Date(msg.created_at).toLocaleString('pt-BR')}`));
+
+            const p = document.createElement('p');
+            setSafeHTML(p, msg.message_content); 
+
+            messageDiv.appendChild(small);
+            messageDiv.appendChild(p);
+            messagesView.appendChild(messageDiv);
         });
         messagesView.scrollTop = messagesView.scrollHeight;
     } catch (err) {
@@ -1697,6 +1769,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`Erro: ${error.message}`);
             }
         });
+    }
+    const closeTicketBtn = document.getElementById('close-ticket-btn');
+    if (closeTicketBtn) {
+        closeTicketBtn.addEventListener('click', handleCloseTicket);
     }
     
     btnEnable2FA?.addEventListener('click', start2FASetup);

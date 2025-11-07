@@ -264,7 +264,7 @@ async function loadVipStatus() {
         if (!response.ok) throw new Error(data.detail || 'Erro ao buscar status VIP');
 
         levelEl.textContent = data.current_vip_level;
-        spentEl.textContent = data.total_premium_spent; // Gasto Sazonal
+        spentEl.textContent = data.total_premium_spent;
 
         const progressPercent = (data.progress_to_next_level / data.next_level_cost) * 100;
         progressTextEl.textContent = `(${data.progress_to_next_level} / ${data.next_level_cost} Cash)`;
@@ -282,7 +282,6 @@ async function loadVipStatus() {
             let buttonsHtml = '';
             const isUnlocked = level.is_unlocked;
 
-            // 1. Botão do Pacote Fixo (Moedas/Cash)
             const fixed = level.fixed_reward;
             if (fixed.currency > 0 || fixed.premium > 0) {
                 let fixedDesc = [];
@@ -298,7 +297,6 @@ async function loadVipStatus() {
                 }
             }
 
-            // 2. Botões dos Itens de Escolha
             level.item_choices.forEach(item => {
                 if (item.is_claimed) {
                     buttonsHtml += `<button class="buy-button disabled" disabled>${item.item_name} (Resgatado)</button>`;
@@ -662,7 +660,6 @@ async function loadUserWallet() {
         const data = await response.json();
         currencyEl.textContent = data.in_game_currency;
         premiumEl.textContent = data.premium_currency;
-        //
     } catch (error) {
         console.error("Erro ao carregar wallet:", error);
         currencyEl.textContent = 'Falha';
@@ -1352,7 +1349,7 @@ async function openTicketViewModal(ticketId, subject) {
     openModal('view-ticket-modal');
 
     try {
-        const response = await apiFetch(`/game/support/my_tickets/${ticket_id}/messages`);
+        const response = await apiFetch(`/game/support/my_tickets/${ticketId}/messages`);
         const messages = await response.json();
         if (!response.ok) throw new Error(messages.detail);
 

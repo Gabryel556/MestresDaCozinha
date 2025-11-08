@@ -478,7 +478,13 @@
                     <label for="view-ticket-reply-message" data-translate="modal_support_reply_label">Sua Resposta</label>
                     <textarea id="view-ticket-reply-message" rows="4" style="width: 100%; padding: 0.8rem; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; color: var(--text-primary); font-size: 1rem; font-family: var(--font-body);" required></textarea>
                 </div>
-                <button type="submit" class="register-btn" data-translate="modal_support_reply_button">Enviar Resposta</button>
+                
+                <div class="form-grid form-grid-2col" style="align-items: center; gap: 1rem;">
+                    <button type="submit" class="register-btn" data-translate="modal_support_reply_button">Enviar Resposta</button>
+                    <button type="button" id="close-ticket-btn" class="secondary-button" style="background-color: var(--error-color); border-color: var(--error-color);" data-translate="modal_support_close_btn">
+                        Marcar como Fechado
+                    </button>
+                </div>
                 <div id="view-ticket-reply-error" class="error-message"></div>
             </form>
         </div>

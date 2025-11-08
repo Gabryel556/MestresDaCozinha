@@ -413,8 +413,52 @@ async function loadCodexIngredients() {
         ingredients.forEach(ing => {
             const card = document.createElement('div');
             card.className = 'codex-card';
-            const imgHtml = ing.image_url ? `<img src="${ing.image_url}" alt="${ing.name}" class="shop-item-image">` : '<div class="shop-item-image-placeholder">?</div>';
-            
+
+            if (ing.image_url) {
+                const img = document.createElement('img');
+                img.src = ing.image_url;
+                img.alt = ing.name;
+                img.className = 'shop-item-image';
+                card.appendChild(img);
+            } else {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'shop-item-image-placeholder';
+                placeholder.textContent = '?';
+                card.appendChild(placeholder);
+            }
+
+            const h3 = document.createElement('h3');
+            h3.textContent = ing.name;
+            card.appendChild(h3);
+
+            const pDesc = document.createElement('p');
+            pDesc.className = 'item-description';
+            pDesc.textContent = ing.description || 'Um ingrediente...';
+            card.appendChild(pDesc);
+
+            const h4Flavor = document.createElement('h4');
+            h4Flavor.style.cssText = "margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary);";
+            h4Flavor.textContent = "Atributos de Sabor";
+            card.appendChild(h4Flavor);
+
+            const ulFlavor = document.createElement('ul');
+            ulFlavor.className = 'codex-stats';
+            ulFlavor.innerHTML = `
+                <li><strong>Salgado:</strong> <span>${ing.attr_salty}</span></li>
+                <li><strong>Doce:</strong> <span>${ing.attr_sweet}</span></li>
+                <li><strong>Ácido:</strong> <span>${ing.attr_sour}</span></li>
+                <li><strong>Amargo:</strong> <span>${ing.attr_bitter}</span></li>
+                <li><strong>Umami:</strong> <span>${ing.attr_umami}</span></li>
+                <li><strong>Textura:</strong> <span>${ing.attr_texture}</span></li>
+                <li><strong>Aroma:</strong> <span>${ing.attr_aroma}</span></li>
+            `;
+            card.appendChild(ulFlavor);
+
+            const h4Rules = document.createElement('h4');
+            h4Rules.style.cssText = "margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary);";
+            h4Rules.textContent = "Regras de Jogo";
+            card.appendChild(h4Rules);
+
             let tags_text = "Nenhuma";
             if (ing.tags && ing.tags.length > 0) {
                 tags_text = ing.tags.map(tag => tag.charAt(0).toUpperCase() + tag.slice(1)).join(', ');
@@ -428,7 +472,6 @@ async function loadCodexIngredients() {
                     <strong>Precisa Cozinhar:</strong> <span>${ing.needs_cooking ? 'Sim' : 'Não'}</span>
                 </li>
             `;
-            
             if (ing.needs_cooking) {
                 cook_rules_html += `
                     <li><strong>Tempo Mín. (Seg):</strong> <span>${ing.cook_time_min}s</span></li>
@@ -436,29 +479,12 @@ async function loadCodexIngredients() {
                 `;
             }
 
-            card.innerHTML = `
-                ${imgHtml}
-                <h3>${ing.name}</h3>
-                <p class="item-description">${ing.description || 'Um ingrediente...'}</p>
-                
-                <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary);">Atributos de Sabor</h4>
-                <ul class="codex-stats">
-                    <li><strong>Salgado:</strong> <span>${ing.attr_salty}</span></li>
-                    <li><strong>Doce:</strong> <span>${ing.attr_sweet}</span></li>
-                    <li><strong>Ácido:</strong> <span>${ing.attr_sour}</span></li>
-                    <li><strong>Amargo:</strong> <span>${ing.attr_bitter}</span></li>
-                    <li><strong>Umami:</strong> <span>${ing.attr_umami}</span></li>
-                    <li><strong>Textura:</strong> <span>${ing.attr_texture}</span></li>
-                    <li><strong>Aroma:</strong> <span>${ing.attr_aroma}</span></li>
-                </ul>
-                
-                <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary);">Regras de Jogo</h4>
-                <ul class="codex-stats">
-                    <li><strong>Tags:</strong> <span>${tags_text}</span></li>
-                    ${cook_rules_html}
-                </ul>
-            `;
-            
+            const ulRules = document.createElement('ul');
+            ulRules.className = 'codex-stats';
+            ulRules.innerHTML = `<li><strong>Tags:</strong> <span></span></li>` + cook_rules_html;
+            ulRules.querySelector('li > span').textContent = tags_text;
+            card.appendChild(ulRules);
+
             grid.appendChild(card);
         });
         
@@ -487,20 +513,46 @@ async function loadCodexRecipes() {
         recipes.forEach(recipe => {
             const card = document.createElement('div');
             card.className = 'codex-card';
-            const imgHtml = recipe.output_image_url ? `<img src="${recipe.output_image_url}" alt="${recipe.output_item_name}" class="shop-item-image">` : '<div class="shop-item-image-placeholder">?</div>';
-            
-            const ingredientsHtml = recipe.ingredients.map(ing => 
-                `<li>${ing.item_name} (x${ing.quantity_required})</li>`
-            ).join('');
-            
-            card.innerHTML = `
-                ${imgHtml}
-                <h3>${recipe.output_item_name} (x${recipe.output_item_quantity})</h3>
-                <div class="codex-recipe-ingredients">
-                    <strong>Ingredientes:</strong>
-                    <ul>${ingredientsHtml || '<li>Nenhum</li>'}</ul>
-                </div>
-            `;
+
+            if (recipe.output_image_url) {
+                const img = document.createElement('img');
+                img.src = recipe.output_image_url;
+                img.alt = recipe.output_item_name;
+                img.className = 'shop-item-image';
+                card.appendChild(img);
+            } else {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'shop-item-image-placeholder';
+                placeholder.textContent = '?';
+                card.appendChild(placeholder);
+            }
+
+            const h3 = document.createElement('h3');
+            h3.textContent = `${recipe.output_item_name} (x${recipe.output_item_quantity})`;
+            card.appendChild(h3);
+
+            const divIngredients = document.createElement('div');
+            divIngredients.className = 'codex-recipe-ingredients';
+
+            const strong = document.createElement('strong');
+            strong.textContent = 'Ingredientes:';
+            divIngredients.appendChild(strong);
+
+            const ul = document.createElement('ul');
+            if (recipe.ingredients && recipe.ingredients.length > 0) {
+                recipe.ingredients.forEach(ing => {
+                    const li = document.createElement('li');
+                    li.textContent = `${ing.item_name} (x${ing.quantity_required})`;
+                    ul.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = 'Nenhum';
+                ul.appendChild(li);
+            }
+            divIngredients.appendChild(ul);
+            card.appendChild(divIngredients);
+
             grid.appendChild(card);
         });
         
@@ -1014,19 +1066,39 @@ function renderFeaturedItems() {
 
             const card = document.createElement('div'); 
             card.className = 'shop-item-card featured-item';
-            const imgHtml = item.image_url ? `<img src="${item.image_url}" alt="${item.item_name}" class="shop-item-image">` : '<div class="shop-item-image-placeholder">?</div>';
-            
-            card.innerHTML = `
-                <div class="featured-badge">${item.display_name}</div> 
-                ${imgHtml}
-                <h3>${item.item_name}</h3>
-                <p class="item-description">${item.description || ''}</p>
-                <div class="buy-options">
-                    ${buttonsHtml || '<p>Item não disponível</p>'} 
-                </div>
-            `;
-            container.appendChild(card);
-        });
+            const badge = document.createElement('div');
+            badge.className = 'featured-badge';
+            badge.textContent = item.display_name;
+            card.appendChild(badge);
+
+            if (item.image_url) {
+                const img = document.createElement('img');
+                img.src = item.image_url;
+                img.alt = item.item_name;
+                img.className = 'shop-item-image';
+                card.appendChild(img);
+            } else {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'shop-item-image-placeholder';
+                placeholder.textContent = '?';
+                card.appendChild(placeholder);
+            }
+
+            const h3 = document.createElement('h3');
+            h3.textContent = item.item_name;
+            card.appendChild(h3);
+
+            const p = document.createElement('p');
+            p.className = 'item-description';
+            p.textContent = item.description || '';
+            card.appendChild(p);
+
+            const buyDiv = document.createElement('div');
+            buyDiv.className = 'buy-options';
+            buyDiv.innerHTML = buttonsHtml || '<p>Item não disponível</p>';
+            card.appendChild(buyDiv);
+                container.appendChild(card);
+            });
         
         setupBuyButtons();
     }
@@ -1088,16 +1160,33 @@ function renderShopItems() {
 
         const card = document.createElement('div'); 
         card.className = 'shop-item-card';
-        const imgHtml = item.image_url ? `<img src="${item.image_url}" alt="${item.item_name}" class="shop-item-image">` : '<div class="shop-item-image-placeholder">?</div>';
-        
-        card.innerHTML = `
-            ${imgHtml}
-            <h3>${item.item_name}</h3>
-            <p class="item-description">${item.description || ''}</p>
-            <div class="buy-options">
-                ${buttonsHtml || '<p>Item não disponível</p>'} 
-            </div>
-        `;
+        if (item.image_url) {
+            const img = document.createElement('img');
+            img.src = item.image_url;
+            img.alt = item.item_name;
+            img.className = 'shop-item-image';
+            card.appendChild(img);
+        } else {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'shop-item-image-placeholder';
+            placeholder.textContent = '?';
+            card.appendChild(placeholder);
+        }
+
+        const h3 = document.createElement('h3');
+        h3.textContent = item.item_name;
+        card.appendChild(h3);
+
+        const p = document.createElement('p');
+        p.className = 'item-description';
+        p.textContent = item.description || '';
+        card.appendChild(p);
+
+        const buyDiv = document.createElement('div');
+        buyDiv.className = 'buy-options';
+        buyDiv.innerHTML = buttonsHtml || '<p>Item não disponível</p>';
+        card.appendChild(buyDiv);
+
         container.appendChild(card);
     });
     
@@ -1135,11 +1224,46 @@ function createCategoryGrid(categoryId) {
 }
 
 function createShopCard(name, desc, price, btnTxt, btnType, itemId, token, imgUrl) { 
-    const card = document.createElement('div'); card.className = 'shop-item-card';
-    const imgHtml = imgUrl ? `<img src="${imgUrl}" alt="${name}" class="shop-item-image">` : '<div class="shop-item-image-placeholder">?</div>';
-    card.innerHTML = `${imgHtml}<h3>${name}</h3><p class="item-description">${desc || ''}</p><p class="item-price">${price}</p>
-    <button class="buy-button ${btnType}" data-item-id="${itemId}" data-item-name="${name}" ${!token ? 'disabled' : ''}>${btnTxt}</button>`;
-    if (!token) card.querySelector('.buy-button').classList.add('requires-login');
+    const card = document.createElement('div'); 
+    card.className = 'shop-item-card';
+
+    if (imgUrl) {
+        const img = document.createElement('img');
+        img.src = imgUrl;
+        img.alt = name;
+        img.className = 'shop-item-image';
+        card.appendChild(img);
+    } else {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'shop-item-image-placeholder';
+        placeholder.textContent = '?';
+        card.appendChild(placeholder);
+    }
+
+    const h3 = document.createElement('h3');
+    h3.textContent = name;
+    card.appendChild(h3);
+
+    const pDesc = document.createElement('p');
+    pDesc.className = 'item-description';
+    pDesc.textContent = desc || '';
+    card.appendChild(pDesc);
+
+    const pPrice = document.createElement('p');
+    pPrice.className = 'item-price';
+    pPrice.textContent = price;
+    card.appendChild(pPrice);
+
+    const button = document.createElement('button');
+    button.className = `buy-button ${btnType}`;
+    button.dataset.itemId = itemId;
+    button.dataset.itemName = name;
+    button.disabled = !token;
+    button.textContent = btnTxt;
+
+    if (!token) button.classList.add('requires-login');
+
+    card.appendChild(button);
     return card;
 }
 
@@ -1370,14 +1494,19 @@ async function loadSupportTickets() {
         tickets.forEach(ticket => {
             const row = tableBody.insertRow();
             const statusKey = `modal_support_status_${ticket.status.toLowerCase()}`;
-            row.innerHTML = `
-                <td>${ticket.ticket_id}</td>
-                <td>${ticket.subject}</td>
-                <td><strong class="status-${ticket.status.toLowerCase()}" data-translate="${statusKey}">${ticket.status}</strong></td>
-                <td>${new Date(ticket.updated_at).toLocaleString('pt-BR')}</td>
-                <td class="action-buttons">
-                    <button class="secondary-button view-ticket-btn" data-ticket-id="${ticket.ticket_id}" data-ticket-subject="${ticket.subject}">Ver/Responder</button>
-                </td>
+
+            row.insertCell().textContent = ticket.ticket_id;
+            row.insertCell().textContent = ticket.subject;
+
+            const statusCell = row.insertCell();
+            statusCell.innerHTML = `<strong class="status-${ticket.status.toLowerCase()}" data-translate="${statusKey}">${ticket.status}</strong>`; // Seguro (HTML controlado)
+
+            row.insertCell().textContent = new Date(ticket.updated_at).toLocaleString('pt-BR');
+
+            const actionsCell = row.insertCell();
+            actionsCell.className = 'action-buttons';
+            actionsCell.innerHTML = `
+                <button class="secondary-button view-ticket-btn" data-ticket-id="${ticket.ticket_id}" data-ticket-subject="${ticket.subject}">Ver/Responder</button>
             `;
         });
 

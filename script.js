@@ -1,5 +1,5 @@
-const API_URL = "https://a31861604d26.ngrok-free.app";
-const WEBSITE_API_KEY = "ag_7c60bab356b2ef55dae946d8671b7d222e1e8d7ff626693e1d52fd0fef02855e"; 
+const API_URL = "https://8b656d8806d4.ngrok-free.app";
+const WEBSITE_API_KEY = "ag_be1862d211fe2fe3bc8e760bf5a8eea9ce3d8f56a9be5c042f1db418ca6a5d27"; 
 const jogoLancado = true;
 let translations = {};
 let stripeProducts = [];

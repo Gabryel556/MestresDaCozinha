@@ -250,20 +250,38 @@ async function loadInventory() {
             const card = document.createElement('div');
             card.className = 'shop-item-card';
             
-            const imgHtml = item.image_url 
-                ? `<img src="${item.image_url}" alt="${item.item_name}" class="shop-item-image">` 
-                : '<div class="shop-item-image-placeholder">?</div>';
+            if (item.image_url) {
+                const img = document.createElement('img');
+                img.src = item.image_url;
+                img.alt = item.item_name;
+                img.className = 'shop-item-image';
+                card.appendChild(img);
+            } else {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'shop-item-image-placeholder';
+                placeholder.textContent = '?';
+                card.appendChild(placeholder);
+            }
 
-            card.innerHTML = `
-                ${imgHtml}
-                <h3>${item.item_name}</h3>
-                <p class.item-description">${item.description || '...'}</p>
-                <div class="buy-options" style="margin-top: 1rem;">
-                    <span style="font-size: 1.2rem; font-weight: bold; color: var(--text-primary);">
-                        Quantidade: ${item.total_quantity}
-                    </span>
-                </div>
-            `;
+            const h3 = document.createElement('h3');
+            h3.textContent = item.item_name;
+            card.appendChild(h3);
+
+            const pDesc = document.createElement('p');
+            pDesc.className = 'item-description';
+            pDesc.textContent = item.description || '...';
+            card.appendChild(pDesc);
+
+            const buyDiv = document.createElement('div');
+            buyDiv.className = 'buy-options';
+            buyDiv.style.marginTop = '1rem';
+            
+            const spanQty = document.createElement('span');
+            spanQty.style.cssText = 'font-size: 1.2rem; font-weight: bold; color: var(--text-primary);';
+            spanQty.textContent = `Quantidade: ${item.total_quantity}`;
+            buyDiv.appendChild(spanQty);
+
+            card.appendChild(buyDiv);
             grid.appendChild(card);
         });
 
@@ -1416,18 +1434,42 @@ async function loadMailbox() {
             } else if (mail.reward_item_id > 0) {
                 rewards.push(`Item ID ${mail.reward_item_id} (x${mail.reward_item_quantity})`);
             }
+
+            const h3 = document.createElement('h3');
+            h3.style.color = 'var(--text-primary)';
+            h3.textContent = mail.subject;
+            card.appendChild(h3);
+
+            const small = document.createElement('small');
+            small.style.cssText = 'color:var(--text-secondary); font-size: 0.8rem;';
+            small.textContent = new Date(mail.sent_at).toLocaleString('pt-BR');
+            card.appendChild(small);
+
+            const pDesc = document.createElement('p');
+            pDesc.className = 'item-description';
+            pDesc.style.margin = '0.75rem 0';
+            setSafeHTML(pDesc, mail.message || 'Sem mensagem.');
+            card.appendChild(pDesc);
+
+            if (rewards.length > 0) {
+                const strongRewards = document.createElement('strong');
+                strongRewards.dataset.translate = 'modal_mailbox_rewards';
+                strongRewards.textContent = 'Recompensas:';
+                card.appendChild(strongRewards);
+
+                const pRewards = document.createElement('p');
+                pRewards.style.cssText = 'color:var(--accent-orange); margin-top: 5px;';
+                pRewards.textContent = rewards.join(', ');
+                card.appendChild(pRewards);
+            }
             
-            card.innerHTML = `
-                <h3 style="color: var(--text-primary);">${mail.subject}</h3>
-                <small style="color:var(--text-secondary); font-size: 0.8rem;">${new Date(mail.sent_at).toLocaleString('pt-BR')}</small>
-                <p class="item-description" style="margin: 0.75rem 0;"></p> ${rewards.length > 0 ? `<strong data-translate="modal_mailbox_rewards">Recompensas:</strong><p style="color:var(--accent-orange); margin-top: 5px;">${rewards.join(', ')}</p>` : ''}
-                <button class="register-btn claim-mail-btn" data-mail-id="${mail.mail_id}" style="width: 100%; margin-top: 1rem;">
-                    ${rewards.length > 0 ? translateKey('modal_mailbox_claim') : translateKey('modal_mailbox_read')}
-                </button>
-            `;
-
-            setSafeHTML(card.querySelector('.item-description'), mail.message || 'Sem mensagem.');
-
+            const button = document.createElement('button');
+            button.className = 'register-btn claim-mail-btn';
+            button.dataset.mailId = mail.mail_id;
+            button.style.cssText = 'width: 100%; margin-top: 1rem;';
+            button.textContent = rewards.length > 0 ? translateKey('modal_mailbox_claim') : translateKey('modal_mailbox_read');
+            card.appendChild(button);
+            
             content.appendChild(card);
         });
         
@@ -1499,15 +1541,20 @@ async function loadSupportTickets() {
             row.insertCell().textContent = ticket.subject;
 
             const statusCell = row.insertCell();
-            statusCell.innerHTML = `<strong class="status-${ticket.status.toLowerCase()}" data-translate="${statusKey}">${ticket.status}</strong>`; // Seguro (HTML controlado)
+            statusCell.innerHTML = `<strong class="status-${ticket.status.toLowerCase()}" data-translate="${statusKey}">${ticket.status}</strong>`; 
 
             row.insertCell().textContent = new Date(ticket.updated_at).toLocaleString('pt-BR');
 
             const actionsCell = row.insertCell();
             actionsCell.className = 'action-buttons';
-            actionsCell.innerHTML = `
-                <button class="secondary-button view-ticket-btn" data-ticket-id="${ticket.ticket_id}" data-ticket-subject="${ticket.subject}">Ver/Responder</button>
-            `;
+            
+            const button = document.createElement('button');
+            button.className = 'secondary-button view-ticket-btn';
+            button.dataset.ticketId = ticket.ticket_id;
+            button.dataset.ticketSubject = ticket.subject; 
+            button.textContent = 'Ver/Responder'; 
+            
+            actionsCell.appendChild(button);
         });
 
         tableBody.querySelectorAll('.view-ticket-btn').forEach(btn => {

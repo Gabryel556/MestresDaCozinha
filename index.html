@@ -305,6 +305,13 @@
                 <div class="form-group"><label for="login-password" data-translate="modal_login_pass_label">Senha</label><input type="password" id="login-password" required></div>
                 <button type="submit" class="register-btn" data-translate="modal_login_button">Entrar</button>
             </form>
+            <div style="margin-top: 1rem; text-align: center; position: relative;">
+                <hr style="border: 0; border-top: 1px solid #444; margin-bottom: 1rem;">
+                <span style="background: var(--bg-dark); padding: 0 10px; color: #888; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 0.8rem;">OU</span>
+                <button type="button" id="google-login-btn" class="secondary-button" style="width: 100%; border-color: #4285F4; color: #fff; background-color: #4285F4;">
+                    <i class="fa-brands fa-google"></i> Entrar com Google
+                </button>
+            </div>
             <a href="#" id="forgot-password-link" style="text-align: center; display: block; margin-top: 1rem; font-size: 0.9rem;" data-translate="modal_login_forgot_pass">
                 Esqueceu a senha?
             </a>
@@ -486,6 +493,32 @@
                     </button>
                 </div>
                 <div id="view-ticket-reply-error" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="google-finalize-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-container">
+            <h2 style="color: var(--accent-orange);">Finalizar Cadastro</h2>
+            <p class="modal-instruction">Sua conta Google foi autenticada! Agora, escolha seu nome de jogador.</p>
+            <form id="google-finalize-form">
+                <div class="form-group">
+                    <label for="g-username">Nome de Usuário</label>
+                    <input type="text" id="g-username" required minlength="3" maxlength="16">
+                </div>
+                <div class="form-group">
+                    <label for="g-character">Nome do Personagem</label>
+                    <input type="text" id="g-character" required minlength="3" maxlength="16">
+                </div>
+                <div class="form-group">
+                    <label for="g-gender">Gênero do Personagem</label>
+                    <select id="g-gender" class="form-control" style="width: 100%; padding: 0.8rem; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 8px;" required>
+                        <option value="male">Masculino</option>
+                        <option value="female">Feminino</option>
+                    </select>
+                </div>
+                <button type="submit" class="register-btn">Começar a Jogar</button>
             </form>
         </div>
     </div>

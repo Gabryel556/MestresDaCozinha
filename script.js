@@ -1,4 +1,4 @@
-const API_URL = "https://e7a0b5aed656.ngrok-free.app";
+const API_URL = "https://d595d093e7a1.ngrok-free.app";
 const WEBSITE_API_KEY = "ag_46faffb2a230b800eedbe772040b9b944bf790b76e2bc775498433a90db8eb5f"; 
 const jogoLancado = true;
 let translations = {};
@@ -17,37 +17,63 @@ let featuredItems = [];
  * @returns {Promise<Response>}
  */
 async function apiFetch(endpoint, options = {}) {
-    const token = localStorage.getItem("jwt_token");
+    let token = localStorage.getItem("jwt_token");
+    
+    const getHeaders = (t) => {
+        const h = new Headers();
+        h.append("X-API-Key", WEBSITE_API_KEY);
+        h.append("ngrok-skip-browser-warning", "true");
+        if (t) h.append("Authorization", `Bearer ${t}`);
+        if (!options.method || options.method === 'GET') h.append("Cache-Control", "no-cache");
+        if (options.body) h.append("Content-Type", "application/json");
+        if (options.headers) {
+            for (const [key, value] of Object.entries(options.headers)) {
+                h.append(key, value);
+            }
+        }
+        return h;
+    };
 
-    const headers = new Headers();
-    headers.append("X-API-Key", WEBSITE_API_KEY);
+    let fetchOptions = { ...options, headers: getHeaders(token) };
+    
+    let response = await fetch(`${API_URL}${endpoint}`, fetchOptions);
 
-    headers.append("ngrok-skip-browser-warning", "true");
+    if (response.status === 401 && !options._retry) {
+        const refreshToken = localStorage.getItem("refresh_token");
+        if (refreshToken) {
+            console.log("Token expirado. Tentando renovar com Refresh Token...");
+            try {
+                const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "ngrok-skip-browser-warning": "true"
+                    },
+                    body: JSON.stringify({ refresh_token: refreshToken })
+                });
 
-    if (token) {
-        headers.append("Authorization", `Bearer ${token}`);
-    }
-
-    if (!options.method || options.method === 'GET') {
-        headers.append("Cache-Control", "no-cache");
-    }
-
-    if (options.body) {
-        headers.append("Content-Type", "application/json");
-    }
-
-    if (options.headers) {
-        for (const [key, value] of Object.entries(options.headers)) {
-            headers.append(key, value);
+                if (refreshRes.ok) {
+                    const data = await refreshRes.json();
+                    console.log("Token renovado com sucesso!");
+                    localStorage.setItem("jwt_token", data.access_token);
+                    localStorage.setItem("refresh_token", data.refresh_token);
+                    fetchOptions.headers = getHeaders(data.access_token);
+                    fetchOptions._retry = true;
+                    response = await fetch(`${API_URL}${endpoint}`, fetchOptions);
+                } else {
+                    console.warn("Refresh token inválido ou expirado. Deslogando.");
+                    logout();
+                }
+            } catch (err) {
+                console.error("Erro ao tentar refresh:", err);
+                logout();
+            }
+        } else {
+            if (!endpoint.includes('/login')) logout();
         }
     }
 
-    const fetchOptions = {
-        ...options,
-        headers: headers
-    };
-
-    return fetch(`${API_URL}${endpoint}`, fetchOptions);
+    return response;
 }
 
 /**
@@ -87,6 +113,7 @@ async function performLogin(username, password) {
         
         if (response.status === 200 && result.access_token) {
             localStorage.setItem("jwt_token", result.access_token);
+            localStorage.setItem("refresh_token", result.refresh_token);
             localStorage.setItem("username", result.username);
             updateLoginStatus(); 
             closeModal('login-modal'); 
@@ -707,12 +734,92 @@ async function performLogin2FA(username, password, code) {
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail || `Erro ${response.status}`);
         localStorage.setItem("jwt_token", result.access_token);
+        localStorage.setItem("refresh_token", result.refresh_token);
         localStorage.setItem("username", result.username);
         updateLoginStatus(); 
         closeModal('2fa-login-modal');
         document.getElementById('2fa-login-form').reset(); 
         startInactivityTimer();
     } catch (error) { console.error("Erro Login 2FA:", error); errorDiv.textContent = `Erro: ${error.message}`; }
+}
+
+async function startGoogleLogin() {
+    try {
+        const response = await apiFetch("/auth/google/login_url");
+        const data = await response.json();
+        window.location.href = data.url;
+    } catch (error) {
+        alert("Erro ao iniciar login Google: " + error.message);
+    }
+}
+
+async function handleGoogleCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    
+    if (code) {
+        window.history.replaceState({}, document.title, "/");
+        
+        console.log("Processando login Google...");
+        
+        try {
+            const response = await apiFetch(`/auth/google/callback?code=${code}`);
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                localStorage.setItem("jwt_token", data.access_token);
+                localStorage.setItem("refresh_token", data.refresh_token);
+                localStorage.setItem("username", data.username);
+                updateLoginStatus();
+                alert(`Bem-vindo de volta, ${data.username}!`);
+            } else if (data.status === 'setup_required') {
+                sessionStorage.setItem("temp_google_token", data.temp_token);
+                openModal('google-finalize-modal');
+            }
+        } catch (error) {
+            alert("Falha no login Google: " + error.message);
+        }
+    }
+}
+
+async function finalizeGoogleRegistration(e) {
+    e.preventDefault();
+    const tempToken = sessionStorage.getItem("temp_google_token");
+    if (!tempToken) { alert("Sessão expirada."); return; }
+
+    const data = {
+        username: document.getElementById('g-username').value,
+        character_name: document.getElementById('g-character').value,
+        gender: document.getElementById('g-gender').value
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/auth/google/finalize`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${tempToken}`,
+                "X-API-Key": WEBSITE_API_KEY,
+                "ngrok-skip-browser-warning": "true"
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail);
+
+        localStorage.setItem("jwt_token", result.access_token);
+        localStorage.setItem("refresh_token", result.refresh_token);
+        localStorage.setItem("username", result.username);
+        
+        closeModal('google-finalize-modal');
+        sessionStorage.removeItem("temp_google_token");
+        updateLoginStatus();
+        alert("Conta criada com sucesso!");
+
+    } catch (error) {
+        alert("Erro: " + error.message);
+    }
 }
 
 async function updateProfileData(newEmail) {
@@ -1997,6 +2104,10 @@ document.addEventListener('DOMContentLoaded', () => {
             openModal('login-modal');
         }
     });
+
+    document.getElementById('google-login-btn')?.addEventListener('click', startGoogleLogin);
+    document.getElementById('google-finalize-form')?.addEventListener('submit', finalizeGoogleRegistration);
+    handleGoogleCallback()
     const viewTicketReplyForm = document.getElementById('view-ticket-reply-form');
     if (viewTicketReplyForm) {
         viewTicketReplyForm.addEventListener('submit', handleTicketReply);

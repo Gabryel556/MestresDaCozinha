@@ -105,7 +105,14 @@
                         <button id="btn-force-disconnect" class="delete-btn" style="margin-top: 1.5rem; background-color: var(--accent-steel-blue);" data-translate="profile_force_disconnect">Forçar Desconexão do Jogo</button>
                         <p class="form-instruction" style="text-align: left; margin-top: 0.5rem;" data-translate="profile_force_disconnect_desc">Se seu personagem ficou "preso" online após um crash, clique aqui.</p>
                     </div>
-
+                    <hr class="section-divider">
+                    <h2 data-translate="profile_encryption_title">Criptografia Ponta-a-Ponta (E2EE)</h2>
+                    <div id="pgp-keys-section">
+                        <p class="form-instruction">Para usar o chat seguro, você precisa gerar suas chaves de criptografia.</p>
+                        <button id="btn-generate-keys" class="secondary-button" style="width: 100%; margin-top: 0.5rem;">
+                            <i class="fa-solid fa-key"></i> Gerar/Resetar Chaves de Segurança
+                        </button>
+                    </div>
                     <hr class="section-divider">
                     <h3 data-translate="profile_discord_title">Vincular Conta Discord</h3>
                     <div id="discord-linked-status" class="hidden discord-status-box linked">
@@ -455,10 +462,31 @@
             <button class="modal-close-btn" data-modal-close="register-modal">&times;</button>
             <h2 data-translate="modal_register_title">Criar Conta</h2>
             <form id="register-form">
-                <div class="form-group"><label for="username" data-translate="modal_register_user_label">Usuário</label><input type="text" id="username" required></div>
-                <div class="form-group"><label for="email" data-translate="modal_register_email_label">E-mail</label><input type="email" id="email" required></div>
-                <div class="form-group"><label for="password" data-translate="modal_register_pass_label">Senha (min 8, max 72)</label><input type="password" id="password" required minlength="8"></div>
-                <button type="submit" class="register-btn" data-translate="modal_register_button">Cadastrar</button>
+                <div class="form-group">
+                    <label for="username">Usuário (Login)</label>
+                    <input type="text" id="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="character_name">Nome do Personagem (In-Game)</label>
+                    <input type="text" id="character_name" required minlength="3" maxlength="16">
+                </div>
+                <div class="form-group">
+                    <label for="gender">Gênero</label>
+                    <select id="gender" class="form-control" style="width: 100%; padding: 0.8rem; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 8px;" required>
+                        <option value="male">Masculino</option>
+                        <option value="female">Feminino</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha (min 8)</label>
+                    <input type="password" id="password" required minlength="8">
+                </div>
+                <button type="submit" class="register-btn">Cadastrar</button>
             </form>
         </div>
     </div>

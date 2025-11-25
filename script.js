@@ -335,17 +335,6 @@ async function loadProfileData() {
         loadingDiv?.classList.add('hidden'); 
         return;
     }
-    try {
-        console.log("Tentando /ping...");
-        const pingRes = await apiFetch(`/ping`);
-        if (!pingRes.ok) console.error("Ping falhou:", pingRes.status);
-        else {
-            const pingData = await pingRes.json();
-            console.log("Ping OK:", pingData); 
-        }
-    } catch(pingErr) {
-        console.error("Erro no Ping:", pingErr);
-    }
 
     try {
         const response = await apiFetch("/users/me");

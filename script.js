@@ -12,6 +12,10 @@ let featuredItems = [];
 let chatSocket = null;
 let activeChatRoomId = null;
 let currentChatType = null;
+let myPrivateKeyObj = null;
+let myPublicKeyObj = null;
+let otherUserPublicKeys = {};
+
 
 /**
  * Wrapper 'fetch' personalizado para adicionar cabeçalhos padrão da API e do Ngrok.
@@ -125,6 +129,7 @@ async function performLogin(username, password) {
             closeModal('register-modal');
             document.getElementById('login-form')?.reset(); 
             document.getElementById('register-form')?.reset();
+            await loadAndUnlockKeys(password);
             startInactivityTimer(); 
         } else if (response.status === 200 && result['2fa_required'] === true) {
             console.log("API retornou 2fa_required. Abrindo modal 2FA...");
@@ -150,6 +155,7 @@ async function performRegister(username, email, password) {
         alert(translateKey('alert_login_success', {username: username}));
         document.getElementById('register-form')?.reset(); closeModal('register-modal');
         await performLogin(username, password);
+        await generateAndUploadKeys(password);
     } catch (error) { console.error("Erro Registro:", error); alert(`Erro ao registrar: ${error.message}`); }
 }
 
@@ -178,6 +184,74 @@ function startPresenceHeartbeat() {
                 .catch(e => console.error("Erro heartbeat", e));
         }
     }, 60000);
+}
+
+async function generateAndUploadKeys(password){
+    console.log("Gerando par de chaves PGP... (Isso pode demorar alguns segundos");
+    const username = localStorage.getItem("username");
+
+    try{
+        const { privateKey, publicKey} = await openpgp.generateKey({
+            type: 'ecc',
+            curve: 'curve25519',
+            userIDs: [{name: username}],
+            passphrase: password
+        });
+
+        myPrivateKeyObj = await openpgp.readPrivateKey({ armoredKey: privateKey});
+        myPublicKeyStr = publicKey;
+
+        await apiFetch('/users/me/key',{
+            method: 'POST',
+            body: JSON.stringify({
+                public_keys: publicKey,
+                encrypted_private_key: privateKey
+            })
+        });
+
+        console.log("Chaves PGP geradas e salvas com sucesso!");
+        return true;
+    } catch (e) {
+        console.error("Erro ao gerar chaves:", e);
+        return false;
+    }
+}
+
+async function loadAndUnlockKeys(password) {
+    try {        
+        const myId = localStorage.getItem("user_id");
+        if(!myId) return false;
+
+        const res = await apiFetch(`/users/${myId}/public_key`);
+        
+        if (res.status === 404) {
+            return await generateAndUploadKeys(password);
+        }
+        return await generateAndUploadKeys(password); 
+
+    } catch (e) {
+        console.error("Erro no load keys:", e);
+        return false;
+    }
+}
+
+async function getRecipientPublicKey(targetUserId) {
+    if (otherUserPublicKeys[targetUserId]) {
+        return otherUserPublicKeys[targetUserId];
+    }
+
+    try {
+        const res = await apiFetch(`/users/${targetUserId}/public_key`);
+        if (res.ok) {
+            const data = await res.json();
+            const key = await openpgp.readKey({ armoredKey: data.public_key });
+            otherUserPublicKeys[targetUserId] = key;
+            return key;
+        }
+    } catch (e) {
+        console.warn(`Usuário ${targetUserId} não tem chave PGP configurada.`);
+    }
+    return null;
 }
 
 async function loadProfileData() {
@@ -1022,14 +1096,63 @@ async function handleInviteMemberToTeam(e) {
 }
 
 async function encryptMessage(text, roomId) {
-    return text; 
+    if (!myPrivateKeyObj) {
+        console.warn("Chave privada não carregada. Enviando texto puro.");
+        return text;
+    }
+
+    try {        
+        const targetId = window.currentChatTargetId;
+        
+        if (!targetId && currentChatType === 'private') {
+            console.warn("ID do destinatário não encontrado. Texto puro.");
+            return text;
+        }
+
+        const targetKey = await getRecipientPublicKey(targetId);
+        
+        if (!targetKey) {
+            return text;
+        }
+
+        const myPublicKey = await openpgp.readKey({ armoredKey: myPublicKeyStr });
+
+        const encrypted = await openpgp.encrypt({
+            message: await openpgp.createMessage({ text: text }),
+            encryptionKeys: [targetKey, myPublicKey],
+            signingKeys: myPrivateKeyObj
+        });
+
+        return encrypted;
+
+    } catch (e) {
+        console.error("Erro ao encriptar:", e);
+        return text;
+    }
 }
 
 async function decryptMessage(encryptedText) {
-    if (encryptedText.includes("BEGIN PGP MESSAGE")) {
-        return "[Mensagem Criptografada - Configurar PGP]";
+    if (!encryptedText.includes("BEGIN PGP MESSAGE")) {
+        return encryptedText;
     }
-    return encryptedText;
+
+    if (!myPrivateKeyObj) {
+        return "[🔒 Criptografado - Chave indisponível]";
+    }
+
+    try {
+        const message = await openpgp.readMessage({ armoredMessage: encryptedText });
+        
+        const { data: decrypted } = await openpgp.decrypt({
+            message: message,
+            decryptionKeys: myPrivateKeyObj
+        });
+
+        return decrypted;
+    } catch (e) {
+        console.error("Falha na descriptografia:", e);
+        return "[🔒 Erro de Decriptografia]";
+    }
 }
 
 function updateLoginStatus() {
@@ -1146,22 +1269,35 @@ async function loadMyChats() {
 async function openChatRoom(roomId, roomName, roomType) {
     activeChatRoomId = roomId;
     currentChatType = roomType;
-    
+    window.currentChatTargetId = null;
+
     document.getElementById('active-chat-name').textContent = roomName;
     document.getElementById('chat-input-form').classList.remove('hidden');
     document.getElementById('chat-header-active').classList.remove('hidden');
     
     const statusEl = document.getElementById('active-chat-status');
-    if (roomType === 'public_community') {
-        statusEl.innerHTML = '<i class="fa-solid fa-globe"></i> Público (Não Criptografado)';
+    
+    if (roomType === 'private') {
+        try {
+            statusEl.innerHTML = '<i class="fa-solid fa-lock"></i> E2EE (Ativo)';
+            statusEl.style.color = 'var(--success-color)';
+            statusEl.style.border = '1px solid var(--success-color)';
+            if (window.pendingChatTargetId) {
+                window.currentChatTargetId = window.pendingChatTargetId;
+                window.pendingChatTargetId = null;
+            }
+
+        } catch(e) {}
+        
+    } else if (roomType === 'public_community') {
+        statusEl.innerHTML = '<i class="fa-solid fa-globe"></i> Público';
         statusEl.style.color = '#ccc';
         statusEl.style.border = 'none';
     } else {
-        statusEl.innerHTML = '<i class="fa-solid fa-lock"></i> E2EE (Seguro)';
-        statusEl.style.color = 'var(--success-color)';
-        statusEl.style.border = '1px solid var(--success-color)';
+        statusEl.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Grupo (Sem E2EE)';
+        statusEl.style.color = 'orange';
+        statusEl.style.border = '1px solid orange';
     }
-    
     const area = document.getElementById('chat-messages-area');
     area.innerHTML = '<p style="text-align:center; margin-top:1rem;">Carregando mensagens...</p>';
     

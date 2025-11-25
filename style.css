@@ -967,7 +967,6 @@ hr.section-divider {
     font-size: 0.9rem;
 }
 
-/* --- CSS DO CHAT & SOCIAL --- */
 .chat-interface {
     display: flex;
     height: 600px;
@@ -1006,11 +1005,27 @@ hr.section-divider {
     transition: background 0.2s;
 }
 
-.chat-item:hover { background-color: #333; }
-.chat-item.active { background-color: var(--accent-steel-blue); color: white; }
+.chat-item:hover { 
+    background-color: #333; 
+}
 
-.chat-item-name { font-weight: bold; display: block; }
-.chat-item-last { font-size: 0.8rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-item.active { 
+    background-color: var(--accent-steel-blue); 
+    color: white; 
+}
+
+.chat-item-name { 
+    font-weight: bold; 
+    display: block; 
+}
+
+.chat-item-last { 
+    font-size: 0.8rem; 
+    color: #aaa; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
 
 .chat-window {
     flex-grow: 1;
@@ -1027,7 +1042,13 @@ hr.section-divider {
     justify-content: space-between;
 }
 
-.encrypted-badge { color: var(--success-color); font-size: 0.8rem; border: 1px solid var(--success-color); padding: 2px 6px; border-radius: 4px; }
+.encrypted-badge { 
+    color: var(--success-color); 
+    font-size: 0.8rem; 
+    border: 1px solid var(--success-color); 
+    padding: 2px 6px; 
+    border-radius: 4px; 
+}
 
 .chat-messages-area {
     flex-grow: 1;
@@ -1105,4 +1126,66 @@ hr.section-divider {
     border-radius: 4px; 
     font-weight: bold; 
     margin-left: 10px; 
+}
+
+.friend-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem;
+    border-bottom: 1px solid #333;
+    background-color: #222;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.friend-item:hover {
+    background-color: #2a2a2a;
+}
+
+.friend-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.friend-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.friend-name {
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.friend-char {
+    color: #aaa;
+    font-size: 0.85rem;
+}
+
+.friend-status {
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
+.friend-status i {
+    font-size: 8px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.friend-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.small-action-btn {
+    padding: 5px 10px !important;
+    font-size: 0.8rem !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
 }

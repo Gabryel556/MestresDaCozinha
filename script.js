@@ -1359,6 +1359,202 @@ async function loadMyTeamData() {
     }
 }
 
+async function loadFriendsList() {
+    const pendingList = document.getElementById('friends-pending-list');
+    const activeList = document.getElementById('friends-active-list');
+    
+    if(pendingList) pendingList.innerHTML = '<p>Carregando...</p>';
+    if(activeList) activeList.innerHTML = '<p>Carregando...</p>';
+
+    try {
+        const res = await apiFetch('/game/social/list');
+        const users = await res.json();
+
+        if(pendingList) pendingList.innerHTML = '';
+        if(activeList) activeList.innerHTML = '';
+
+        let hasPending = false;
+        let hasActive = false;
+
+        users.forEach(u => {
+            const li = document.createElement('li');
+            li.className = 'friend-item';
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'friend-info';
+            
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'friend-header';
+            
+            const nameStrong = document.createElement('strong');
+            nameStrong.className = 'friend-name';
+            nameStrong.textContent = u.username;
+            
+            const charSpan = document.createElement('span');
+            charSpan.className = 'friend-char';
+            charSpan.textContent = `(${u.character_name})`;
+
+            headerDiv.appendChild(nameStrong);
+            headerDiv.appendChild(charSpan);
+
+            let lastSeenText = 'Nunca';
+            if (u.last_seen) {
+                const lastDate = new Date(u.last_seen);
+                const diffMs = new Date() - lastDate;
+                const diffMins = Math.floor(diffMs / 60000);
+                
+                if (diffMins < 5) lastSeenText = "Agora";
+                else if (diffMins < 60) lastSeenText = `${diffMins}m atrás`;
+                else if (diffMins < 1440) lastSeenText = `${Math.floor(diffMins/60)}h atrás`;
+                else lastSeenText = `${Math.floor(diffMins/1440)}d atrás`;
+            }
+
+            const isOnline = u.status !== 'offline';
+            const statusColor = isOnline ? 'var(--success-color)' : '#666';
+            
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'friend-status';
+            statusDiv.style.color = statusColor;
+            statusDiv.innerHTML = `<i class="fa-solid fa-circle"></i> ${u.status} <span style="color:#666; margin-left:5px;">• Visto: ${lastSeenText}</span>`;
+
+            infoDiv.appendChild(headerDiv);
+            infoDiv.appendChild(statusDiv);
+            li.appendChild(infoDiv);
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'friend-actions';
+
+            if (u.relationship_status === 'friends') {
+                hasActive = true;
+                
+                const chatBtn = document.createElement('button');
+                chatBtn.className = 'secondary-button small-action-btn';
+                chatBtn.innerHTML = '<i class="fa-solid fa-comment"></i>';
+                chatBtn.title = "Abrir Chat";
+                chatBtn.onclick = () => startPrivateChat(u.user_id, u.username);
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'delete-btn small-action-btn';
+                removeBtn.innerHTML = '<i class="fa-solid fa-user-minus"></i>';
+                removeBtn.title = "Remover Amigo";
+                removeBtn.onclick = () => removeFriend(u.user_id, u.username);
+
+                actionsDiv.appendChild(chatBtn);
+                actionsDiv.appendChild(removeBtn);
+                li.appendChild(actionsDiv);
+                activeList.appendChild(li);
+
+            } else if (u.relationship_status === 'pending_received') {
+                hasPending = true;
+                
+                const acceptBtn = document.createElement('button');
+                acceptBtn.className = 'register-btn small-action-btn';
+                acceptBtn.textContent = 'Aceitar';
+                acceptBtn.onclick = () => acceptFriend(u.user_id);
+                
+                const denyBtn = document.createElement('button');
+                denyBtn.className = 'delete-btn small-action-btn';
+                denyBtn.textContent = 'X';
+                denyBtn.onclick = () => removeFriend(u.user_id, u.username, true);
+
+                actionsDiv.appendChild(acceptBtn);
+                actionsDiv.appendChild(denyBtn);
+                li.appendChild(actionsDiv);
+                pendingList.appendChild(li);
+
+            } else if (u.relationship_status === 'pending_sent') {
+                hasPending = true;
+                
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'secondary-button small-action-btn';
+                cancelBtn.textContent = 'Cancelar';
+                cancelBtn.onclick = () => removeFriend(u.user_id, u.username, true);
+
+                actionsDiv.appendChild(cancelBtn);
+                li.appendChild(actionsDiv);
+                pendingList.appendChild(li);
+            }
+        });
+
+        if (!hasPending) pendingList.innerHTML = '<p style="color:#666; font-style:italic;">Nenhum pedido pendente.</p>';
+        if (!hasActive) activeList.innerHTML = '<p style="color:#666; font-style:italic;">Você ainda não adicionou amigos.</p>';
+
+    } catch (e) {
+        console.error(e);
+        if(activeList) activeList.innerHTML = '<p class="error-message">Erro ao carregar lista.</p>';
+    }
+}
+
+async function handleAddFriendSubmit(e) {
+    e.preventDefault();
+    const usernameInput = document.getElementById('add-friend-username');
+    const username = usernameInput.value.trim();
+    if (!username) return;
+
+    try {
+        const res = await apiFetch('/game/social/add', {
+            method: 'POST',
+            body: JSON.stringify({ username: username })
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+            alert(data.message);
+            usernameInput.value = '';
+            loadFriendsList();
+        } else {
+            alert(data.detail);
+        }
+    } catch (err) {
+        alert("Erro ao enviar pedido.");
+    }
+}
+
+async function removeFriend(targetId, username, isCancel = false) {
+    const action = isCancel ? "cancelar/recusar o pedido de" : "remover";
+    if (!confirm(`Tem certeza que deseja ${action} ${username}?`)) return;
+
+    try {
+        const res = await apiFetch(`/game/social/remove/${targetId}`, { method: 'DELETE' });
+        if (res.ok) {
+            loadFriendsList();
+        } else {
+            const d = await res.json();
+            alert(d.detail);
+        }
+    } catch (e) { alert("Erro ao remover."); }
+}
+
+async function acceptFriend(targetId) {
+    try {
+        const res = await apiFetch(`/game/social/accept/${targetId}`, { method: 'POST' });
+        if (res.ok) {
+            alert("Agora vocês são amigos!");
+            loadFriendsList();
+        } else {
+            const d = await res.json();
+            alert(d.detail);
+        }
+    } catch (e) { alert("Erro ao aceitar."); }
+}
+
+async function startPrivateChat(targetId, targetName) {
+    try {
+        const res = await apiFetch(`/game/chat/start_private/${targetId}`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok || data.room_id) {
+            document.querySelector('[data-social-tab="chats"]').click();
+            
+            setTimeout(() => {
+                openChatRoom(data.room_id, targetName, 'private');
+            }, 500);
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Erro ao iniciar chat.");
+    }
+}
+
 async function loadRankingHistory(seasonName) {
     const tableBody = document.getElementById('ranking-table-body');
     const headerValue = document.getElementById('ranking-header-value');
@@ -2565,6 +2761,8 @@ document.addEventListener('DOMContentLoaded', () => {
         viewTicketReplyForm.addEventListener('submit', handleTicketReply);
     }
 
+    document.getElementById('add-friend-form')?.addEventListener('submit', handleAddFriendSubmit);
+
     document.querySelectorAll('[data-social-tab]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('[data-social-tab]').forEach(b => b.classList.remove('active'));
@@ -2577,6 +2775,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tabId === 'chats') loadMyChats();
             if (tabId === 'communities') loadPublicCommunities();
             if (tabId === 'team') loadMyTeamData();
+            if (tabId === 'friends') loadFriendsList();
         });
     });
 

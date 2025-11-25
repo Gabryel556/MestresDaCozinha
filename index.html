@@ -217,18 +217,45 @@
                 
                 <nav class="shop-categories">
                     <button class="shop-category-btn active" data-social-tab="discord">
-                        <i class="fa-brands fa-discord"></i> Discord Oficial
+                        <i class="fa-brands fa-discord"></i> Discord
+                    </button>
+                    <button class="shop-category-btn" data-social-tab="friends"> <i class="fa-solid fa-user-plus"></i> Amigos
                     </button>
                     <button class="shop-category-btn" data-social-tab="chats">
-                        <i class="fa-solid fa-comments"></i> Chats & Amigos
+                        <i class="fa-solid fa-comments"></i> Chats
                     </button>
                     <button class="shop-category-btn" data-social-tab="communities">
                         <i class="fa-solid fa-users-rectangle"></i> Comunidades
                     </button>
                     <button class="shop-category-btn" data-social-tab="team">
-                        <i class="fa-solid fa-flag"></i> Meu Time
+                        <i class="fa-solid fa-flag"></i> Time
                     </button>
                 </nav>
+
+                <div id="social-tab-friends" class="social-content hidden">
+                    <div class="admin-section" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #444;">
+                        <h3>Adicionar Amigo</h3>
+                        <form id="add-friend-form" style="display: flex; gap: 10px;">
+                            <input type="text" id="add-friend-username" placeholder="Digite o Nome de Usuário" required style="flex-grow: 1;">
+                            <button type="submit" class="register-btn" style="width: auto;">Enviar Pedido</button>
+                        </form>
+                    </div>
+
+                    <div class="friends-layout" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="friends-column">
+                            <h3 style="color: var(--accent-orange);">Pedidos Pendentes</h3>
+                            <ul id="friends-pending-list" class="roster-list">
+                                <p style="color:#888">Nenhum pedido pendente.</p>
+                            </ul>
+                        </div>
+                        <div class="friends-column">
+                            <h3>Meus Amigos</h3>
+                            <ul id="friends-active-list" class="roster-list">
+                                <p style="color:#888">Carregando...</p>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
 
                 <div id="social-tab-discord" class="social-content active">
                     <p data-translate="community_subtitle">Junte-se ao nosso servidor para novidades e suporte!</p> 

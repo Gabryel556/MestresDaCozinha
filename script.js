@@ -956,7 +956,7 @@ async function handleCreateGroup(e) {
     try {
         const res = await apiFetch('/game/chat/create_group', {
             method: 'POST',
-            body: JSON.stringify({ room_name: name, invite_usernames: inviteUsernames }) // Campo atualizado
+            body: JSON.stringify({ room_name: name, invite_usernames: inviteUsernames })
         });
         const data = await res.json();
         if (res.ok) {

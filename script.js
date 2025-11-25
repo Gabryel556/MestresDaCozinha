@@ -872,6 +872,150 @@ async function loadUserWallet() {
     }
 }
 
+async function loadTeamInvites() {
+    const list = document.getElementById('my-team-invites-list');
+    if (!list) return;
+    list.innerHTML = '<p>Carregando convites...</p>';
+
+    try {
+        const res = await apiFetch('/game/teams/invites/my');
+        const invites = await res.json();
+
+        list.innerHTML = '';
+        if (invites.length === 0) {
+            list.innerHTML = '<p style="color:#aaa; font-style:italic;">Nenhum convite pendente.</p>';
+            return;
+        }
+
+        invites.forEach(inv => {
+            const div = document.createElement('div');
+            div.className = 'shop-item-card';
+            div.style.marginBottom = '1rem';
+            div.style.textAlign = 'left';
+            div.innerHTML = `
+                <h4 style="color:var(--accent-orange)">${inv.team_name} [${inv.team_tag}]</h4>
+                <p style="font-size:0.9rem">Convidado por: <strong>${inv.inviter_username}</strong></p>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button class="register-btn" style="padding:0.5rem 1rem; font-size:0.9rem" onclick="acceptTeamInvite(${inv.invite_id})">Aceitar</button>
+                    <button class="delete-btn" style="padding:0.5rem 1rem; font-size:0.9rem" onclick="declineTeamInvite(${inv.invite_id})">Recusar</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    } catch (e) {
+        list.innerHTML = '<p class="error-message">Erro ao carregar convites.</p>';
+    }
+}
+
+async function acceptTeamInvite(inviteId) {
+    try {
+        const res = await apiFetch(`/game/teams/invites/${inviteId}/accept`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            alert("Bem-vindo ao time!");
+            loadMyTeamData();
+        } else {
+            alert(data.detail);
+        }
+    } catch (e) { alert("Erro ao aceitar."); }
+}
+
+async function declineTeamInvite(inviteId) {
+    if(!confirm("Recusar este convite?")) return;
+    try {
+        const res = await apiFetch(`/game/teams/invites/${inviteId}/decline`, { method: 'POST' });
+        if (res.ok) {
+            loadTeamInvites();
+        }
+    } catch (e) { alert("Erro ao recusar."); }
+}
+
+async function handleLeaveTeam() {
+    if(!confirm("Tem certeza que deseja sair do time?")) return;
+    try {
+        const res = await apiFetch('/game/teams/leave', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            alert(data.message);
+            loadMyTeamData();
+        } else {
+            alert(data.detail);
+        }
+    } catch(e) { alert("Erro ao sair."); }
+}
+
+async function handleCreateGroup(e) {
+    e.preventDefault();
+    const name = document.getElementById('group-name').value;
+    const inviteStr = document.getElementById('group-invites').value;
+    
+    const inviteUsernames = inviteStr.split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+    try {
+        const res = await apiFetch('/game/chat/create_group', {
+            method: 'POST',
+            body: JSON.stringify({ room_name: name, invite_usernames: inviteUsernames }) // Campo atualizado
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert("Grupo criado com sucesso!");
+            closeModal('create-group-modal');
+            loadMyChats();
+        } else {
+            alert(data.detail);
+        }
+    } catch(e) { alert("Erro ao criar grupo."); }
+}
+
+async function handleCreateTeam(e) {
+    e.preventDefault();
+    const name = document.getElementById('create-team-name').value;
+    const tag = document.getElementById('create-team-tag').value;
+
+    try {
+        const res = await apiFetch('/game/teams/create', {
+            method: 'POST',
+            body: JSON.stringify({ team_name: name, team_tag: tag })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert("Time criado com sucesso!");
+            closeModal('create-team-modal');
+            loadMyTeamData();
+        } else {
+            alert(data.detail);
+        }
+    } catch(e) { alert("Erro ao criar time."); }
+}
+
+async function handleInviteMemberToTeam(e) {
+    e.preventDefault();
+    const username = document.getElementById('invite-team-username').value;
+    
+    try {
+        const res = await apiFetch('/game/teams/invite', {
+            method: 'POST',
+            body: JSON.stringify({ invitee_username: username })
+        });
+        const data = await res.json();
+        alert(data.message || data.detail);
+        if (res.ok) closeModal('invite-team-modal');
+    } catch(e) { alert("Erro ao convidar."); }
+}
+
+async function encryptMessage(text, roomId) {
+    return text; 
+}
+
+async function decryptMessage(encryptedText) {
+    if (encryptedText.includes("BEGIN PGP MESSAGE")) {
+        return "[Mensagem Criptografada - Configurar PGP]";
+    }
+    return encryptedText;
+}
+
 function updateLoginStatus() {
     const token = localStorage.getItem("jwt_token");
     const username = localStorage.getItem("username");
@@ -1020,14 +1164,29 @@ async function appendMessageToChat(msgData) {
     
     if (currentChatType !== 'public_community' && content.includes('BEGIN PGP MESSAGE')) {
         try {
-            content = "[Mensagem Criptografada - Implementar Key Manager]"; 
+            content = "[Mensagem Criptografada]"; 
             content = await decryptMessage(content);
         } catch (e) {
             content = "[Erro ao descriptografar]";
         }
     }
     
-    div.innerHTML = `<strong>${msgData.sender_name}:</strong> ${content}`;
+    const strong = document.createElement('strong');
+    strong.textContent = msgData.sender_name + ': ';
+    
+    const textNode = document.createTextNode(content);
+    
+    div.appendChild(strong);
+    div.appendChild(textNode);
+    
+    const timeSpan = document.createElement('span');
+    timeSpan.style.fontSize = '0.7rem';
+    timeSpan.style.opacity = '0.7';
+    timeSpan.style.marginLeft = '8px';
+    const date = new Date(msgData.timestamp);
+    timeSpan.textContent = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    div.appendChild(timeSpan);
+
     area.appendChild(div);
     area.scrollTop = area.scrollHeight;
 }
@@ -1061,16 +1220,43 @@ async function loadPublicCommunities() {
         const comms = await res.json();
         
         grid.innerHTML = '';
+        if (comms.length === 0) {
+            grid.innerHTML = '<p>Nenhuma comunidade encontrada.</p>';
+            return;
+        }
+
         comms.forEach(c => {
             const div = document.createElement('div');
             div.className = 'shop-item-card';
-            div.innerHTML = `
-                <h3>${c.room_name}</h3>
-                <p>${c.description}</p>
-                <p><small>${c.member_count} membros</small></p>
-                ${c.has_password ? '<p style="color:orange"><i class="fa-solid fa-lock"></i> Requer Senha</p>' : ''}
-                <button class="buy-button buy-normal" onclick="joinCommunity(${c.room_id}, ${c.has_password})">Entrar</button>
-            `;
+            
+            const h3 = document.createElement('h3');
+            h3.textContent = c.room_name;
+            
+            const pDesc = document.createElement('p');
+            pDesc.textContent = c.description;
+            
+            const pInfo = document.createElement('p');
+            const small = document.createElement('small');
+            small.textContent = `${c.member_count} membros`;
+            pInfo.appendChild(small);
+
+            div.appendChild(h3);
+            div.appendChild(pDesc);
+            div.appendChild(pInfo);
+
+            if (c.has_password) {
+                const pLock = document.createElement('p');
+                pLock.style.color = 'orange';
+                pLock.innerHTML = '<i class="fa-solid fa-lock"></i> Requer Senha';
+                div.appendChild(pLock);
+            }
+
+            const btn = document.createElement('button');
+            btn.className = 'buy-button buy-normal';
+            btn.textContent = 'Entrar';
+            btn.onclick = () => joinCommunity(c.room_id, c.has_password);
+            
+            div.appendChild(btn);
             grid.appendChild(div);
         });
     } catch(e) {
@@ -2394,6 +2580,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    document.getElementById('create-group-form')?.addEventListener('submit', handleCreateGroup);
+    document.getElementById('create-team-form')?.addEventListener('submit', handleCreateTeam);
+    document.getElementById('invite-team-form')?.addEventListener('submit', handleInviteMemberToTeam);
+    document.getElementById('leave-team-btn')?.addEventListener('click', handleLeaveTeam);
+    document.getElementById('refresh-chats-btn')?.addEventListener('click', loadMyChats);
     document.getElementById('create-community-form')?.addEventListener('submit', handleCreateCommunity);
     document.getElementById('chat-input-form')?.addEventListener('submit', handleSendChatMessage);
     connectChatWebSocket();

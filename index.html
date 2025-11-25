@@ -637,8 +637,8 @@
                     <input type="text" id="group-name" required>
                 </div>
                 <div class="form-group">
-                    <label>IDs dos Amigos (separados por vírgula)</label>
-                    <input type="text" id="group-invites" placeholder="Ex: 15, 22, 40">
+                    <label>Nomes dos Amigos (separados por vírgula)</label>
+                    <input type="text" id="group-invites" placeholder="Ex: Ganert, Jogador2, Admin">
                 </div>
                 <button type="submit" class="register-btn">Criar Grupo</button>
             </form>
@@ -663,6 +663,38 @@
                     <input type="password" id="comm-pass" placeholder="Deixe em branco para aberto">
                 </div>
                 <button type="submit" class="register-btn">Criar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="create-team-modal" class="modal hidden">
+        <div class="modal-overlay" data-modal-close="create-team-modal"></div>
+        <div class="modal-container">
+            <h2>Criar Novo Time</h2>
+            <form id="create-team-form">
+                <div class="form-group">
+                    <label>Nome do Time (3-30 chars)</label>
+                    <input type="text" id="create-team-name" required minlength="3" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label>TAG do Time (Exatamente 4 chars)</label>
+                    <input type="text" id="create-team-tag" required minlength="4" maxlength="4" style="text-transform: uppercase;">
+                </div>
+                <button type="submit" class="register-btn">Fundar Time</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="invite-team-modal" class="modal hidden">
+        <div class="modal-overlay" data-modal-close="invite-team-modal"></div>
+        <div class="modal-container">
+            <h2>Convidar Jogador</h2>
+            <form id="invite-team-form">
+                <div class="form-group">
+                    <label>Nome de Usuário</label>
+                    <input type="text" id="invite-team-username" required>
+                </div>
+                <button type="submit" class="register-btn">Enviar Convite</button>
             </form>
         </div>
     </div>

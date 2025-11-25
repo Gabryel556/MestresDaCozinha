@@ -1,4 +1,4 @@
-const API_URL = "https://0f94ee60f447.ngrok-free.app";
+const API_URL = "https://precipitative-nonmotoring-michelina.ngrok-free.dev";
 const WEBSITE_API_KEY = "ag_46faffb2a230b800eedbe772040b9b944bf790b76e2bc775498433a90db8eb5f"; 
 const jogoLancado = true;
 let translations = {};

@@ -1162,20 +1162,23 @@ async function handleInviteMemberToTeam(e) {
 
 async function encryptMessage(text, roomId) {
     if (!myPublicKeyStr) myPublicKeyStr = localStorage.getItem("pgp_public_key");
+    
     if (!myPublicKeyStr) {
-        alert("Erro: Suas chaves de segurança não estão carregadas. Tente deslogar e logar novamente.");
+        if(localStorage.getItem("pgp_private_key")) {
+             alert("Atenção: Chaves de segurança não carregadas. Gere-as no perfil.");
+        }
         return null;
     }
 
     try {
-        if (currentChatType === 'private' && !window.currentChatTargetId) {
-             console.warn("ID do destinatário desconhecido. Tentando enviar sem criptografia (falha de segurança).");
+        if (!window.currentChatTargetId && currentChatType === 'private') {
+             console.warn("ID do destinatário desconhecido. Abortando criptografia para evitar envio em texto plano.");
              return null;
         }
 
         const targetKeyArmored = await getTargetPublicKey(window.currentChatTargetId);
         if (!targetKeyArmored) {
-            alert("Este usuário ainda não criou uma conta segura (sem chaves PGP). Não é possível enviar mensagem criptografada.");
+            alert("Este usuário ainda não configurou a segurança (Chaves PGP). Não é possível enviar mensagem privada.");
             return null;
         }
 
@@ -1185,7 +1188,6 @@ async function encryptMessage(text, roomId) {
         ];
 
         const message = await openpgp.createMessage({ text: text });
-        
         const encrypted = await openpgp.encrypt({
             message,
             encryptionKeys: publicKeys
@@ -1195,7 +1197,6 @@ async function encryptMessage(text, roomId) {
 
     } catch (error) {
         console.error("Erro na encriptação:", error);
-        alert("Erro ao criptografar mensagem.");
         return null;
     }
 }
@@ -1344,28 +1345,26 @@ async function openChatRoom(roomId, roomName, roomType, targetUserId = null) {
     currentChatType = roomType;
     
     window.currentChatTargetId = targetUserId; 
-    console.log("Chat aberto. Room:", roomId, "Alvo PGP:", window.currentChatTargetId);
+    console.log("Chat aberto. Alvo para criptografia:", window.currentChatTargetId);
     
     document.getElementById('active-chat-name').textContent = roomName;
     document.getElementById('chat-input-form').classList.remove('hidden');
     document.getElementById('chat-header-active').classList.remove('hidden');
     
     const statusEl = document.getElementById('active-chat-status');
+    
     if (roomType === 'public_community') {
-        statusEl.innerHTML = '<i class="fa-solid fa-globe"></i> Público';
+        statusEl.innerHTML = '<i class="fa-solid fa-globe"></i> Público (Não Criptografado)';
         statusEl.style.color = '#ccc';
         statusEl.style.border = 'none';
     } else if (roomType === 'private') {
-        statusEl.innerHTML = `
-            <i class="fa-solid fa-lock"></i> E2EE (Seguro) 
-            <button onclick="checkAndResyncPeer(${roomId}, ${targetUserId})" title="Forçar Sincronização de Chaves" style="background:none; border:none; color:orange; cursor:pointer; font-size:0.8rem;">
-                <i class="fa-solid fa-sync"></i>
-            </button>
-        `;
+        statusEl.innerHTML = '<i class="fa-solid fa-lock"></i> E2EE (Seguro)';
         statusEl.style.color = 'var(--success-color)';
         statusEl.style.border = '1px solid var(--success-color)';
     } else {
         statusEl.innerHTML = '<i class="fa-solid fa-users"></i> Grupo';
+        statusEl.style.color = 'var(--text-primary)';
+        statusEl.style.border = 'none';
     }
     
     const area = document.getElementById('chat-messages-area');
@@ -1382,6 +1381,7 @@ async function openChatRoom(roomId, roomName, roomType, targetUserId = null) {
         area.scrollTop = area.scrollHeight;
     } catch (e) {
         console.error(e);
+        area.innerHTML = '<p style="color:red; text-align:center;">Erro ao carregar histórico.</p>';
     }
 }
 

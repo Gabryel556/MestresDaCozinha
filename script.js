@@ -164,6 +164,20 @@ function logout() {
     showPage('inicio');
 }
 
+function startPresenceHeartbeat() {
+    if (localStorage.getItem("jwt_token")) {
+        apiFetch('/game/presence/heartbeat', { method: 'POST' }).catch(e => console.error("Erro heartbeat", e));
+    }
+
+    setInterval(() => {
+        if (localStorage.getItem("jwt_token")) {
+            apiFetch('/game/presence/heartbeat', { method: 'POST' })
+                .then(() => console.log("Heartbeat enviado."))
+                .catch(e => console.error("Erro heartbeat", e));
+        }
+    }, 60000);
+}
+
 async function loadProfileData() {
     const loadingDiv = document.getElementById('profile-info-loading');
     const contentDiv = document.getElementById('profile-info-content');
@@ -1065,16 +1079,19 @@ function connectChatWebSocket() {
     
     chatSocket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
+        
         if (data.type === 'new_message') {
+            console.log("Nova mensagem recebida:", data);
+
             if (activeChatRoomId == data.room_id) {
                 await appendMessageToChat(data);
             }
             
-            const teamArea = document.getElementById('team-chat-area');
-            if (!document.getElementById('social-tab-team').classList.contains('hidden')) {                
-                if (window.currentTeamRoomId === data.room_id) {
-                    appendMessageToTeamArea(data);
-                }
+            const teamTab = document.getElementById('social-tab-team');
+            
+            if (teamTab && !teamTab.classList.contains('hidden') && window.currentTeamRoomId == data.room_id) {
+                console.log("Adicionando mensagem ao chat do time...");
+                appendMessageToTeamArea(data);
             }
         }
     };
@@ -1100,8 +1117,7 @@ async function loadMyChats() {
         }
         
         rooms.forEach(room => {
-            if (room.room_type === 'public_community') return;
-
+            
             const div = document.createElement('div');
             div.className = 'chat-item';
             div.onclick = () => openChatRoom(room.room_id, room.room_name, room.room_type);
@@ -1109,10 +1125,13 @@ async function loadMyChats() {
             let icon = '<i class="fa-solid fa-user"></i>';
             if (room.room_type === 'group') icon = '<i class="fa-solid fa-users"></i>';
             if (room.room_type === 'team') icon = '<i class="fa-solid fa-flag"></i>';
+            if (room.room_type === 'public_community') icon = '<i class="fa-solid fa-globe"></i>';
+
+            const lastMsg = room.last_message ? room.last_message : 'Nenhuma mensagem ainda';
 
             div.innerHTML = `
                 <span class="chat-item-name">${icon} ${room.room_name}</span>
-                <span class="chat-item-last">${room.last_message || 'Sem mensagens'}</span>
+                <span class="chat-item-last">${lastMsg}</span>
             `;
             list.appendChild(div);
         });
@@ -1286,8 +1305,12 @@ async function joinCommunity(roomId, hasPassword) {
         });
         if (res.ok) {
             alert("Você entrou na comunidade!");
+            
             document.querySelector('[data-social-tab="chats"]').click();
-            setTimeout(() => loadMyChats(), 500); 
+            
+            setTimeout(async () => {
+                await loadMyChats();
+            }, 500); 
         } else {
             const d = await res.json();
             alert("Erro: " + d.detail);
@@ -1361,6 +1384,8 @@ async function loadMyTeamData() {
             }
 
             if (data.chat_room_id) {
+                window.currentTeamRoomId = data.chat_room_id; 
+                console.log("Sala do Time Definida:", window.currentTeamRoomId);
                 loadTeamChatHistory(data.chat_room_id);
 
                 const teamChatForm = document.getElementById('team-chat-form');
@@ -2860,6 +2885,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setupShopCategories();
     loadTranslations();
     updateLoginStatus();
+
+    if (localStorage.getItem("jwt_token")) {
+        startInactivityTimer();
+        startPresenceHeartbeat();
+    }
     
     if (localStorage.getItem("jwt_token")) {
         startInactivityTimer();

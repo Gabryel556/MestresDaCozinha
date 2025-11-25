@@ -9,6 +9,9 @@ let current2FASecret = null;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 let currentLanguage = localStorage.getItem('preferred_language') || 'pt';
 let featuredItems = [];
+let chatSocket = null;
+let activeChatRoomId = null;
+let currentChatType = null;
 
 /**
  * Wrapper 'fetch' personalizado para adicionar cabeçalhos padrão da API e do Ngrok.
@@ -904,6 +907,269 @@ function updateLoginStatus() {
         mailboxLink?.classList.add('hidden');
         if(currencyEl) currencyEl.textContent = '-';
         if(premiumEl) premiumEl.textContent = '-';
+    }
+}
+
+function connectChatWebSocket() {
+    const token = localStorage.getItem("jwt_token");
+    if (!token) return;
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const domain = API_URL.replace('http://', '').replace('https://', '');
+    
+    chatSocket = new WebSocket(`${protocol}//${domain}/ws/chat?token=${token}`);
+    
+    chatSocket.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'new_message') {
+            if (activeChatRoomId == data.room_id) {
+                await appendMessageToChat(data);
+            }
+        }
+    };
+    
+    chatSocket.onclose = () => {
+        console.log("WebSocket fechado. Tentando reconectar em 5s...");
+        setTimeout(connectChatWebSocket, 5000);
+    };
+}
+
+async function loadMyChats() {
+    const list = document.getElementById('chat-list');
+    list.innerHTML = '<p class="loading-text">Carregando...</p>';
+    
+    try {
+        const res = await apiFetch('/game/chat/rooms');
+        const rooms = await res.json();
+        
+        list.innerHTML = '';
+        if (rooms.length === 0) {
+            list.innerHTML = '<p style="padding:1rem; color:#888;">Nenhuma conversa.</p>';
+            return;
+        }
+        
+        rooms.forEach(room => {
+            if (room.room_type === 'public_community') return; // Não mostra comunidades aqui
+
+            const div = document.createElement('div');
+            div.className = 'chat-item';
+            div.onclick = () => openChatRoom(room.room_id, room.room_name, room.room_type);
+            
+            let icon = '<i class="fa-solid fa-user"></i>';
+            if (room.room_type === 'group') icon = '<i class="fa-solid fa-users"></i>';
+            if (room.room_type === 'team') icon = '<i class="fa-solid fa-flag"></i>';
+
+            div.innerHTML = `
+                <span class="chat-item-name">${icon} ${room.room_name}</span>
+                <span class="chat-item-last">${room.last_message || 'Sem mensagens'}</span>
+            `;
+            list.appendChild(div);
+        });
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = '<p class="error-message">Erro ao carregar.</p>';
+    }
+}
+
+async function openChatRoom(roomId, roomName, roomType) {
+    activeChatRoomId = roomId;
+    currentChatType = roomType;
+    
+    document.getElementById('active-chat-name').textContent = roomName;
+    document.getElementById('chat-input-form').classList.remove('hidden');
+    document.getElementById('chat-header-active').classList.remove('hidden');
+    
+    const statusEl = document.getElementById('active-chat-status');
+    if (roomType === 'public_community') {
+        statusEl.innerHTML = '<i class="fa-solid fa-globe"></i> Público (Não Criptografado)';
+        statusEl.style.color = '#ccc';
+        statusEl.style.border = 'none';
+    } else {
+        statusEl.innerHTML = '<i class="fa-solid fa-lock"></i> E2EE (Seguro)';
+        statusEl.style.color = 'var(--success-color)';
+        statusEl.style.border = '1px solid var(--success-color)';
+    }
+    
+    const area = document.getElementById('chat-messages-area');
+    area.innerHTML = '<p style="text-align:center; margin-top:1rem;">Carregando mensagens...</p>';
+    
+    try {
+        const res = await apiFetch(`/game/chat/history/${roomId}`);
+        const msgs = await res.json();
+        area.innerHTML = '';
+        
+        for (const msg of msgs) {
+            await appendMessageToChat(msg);
+        }
+        area.scrollTop = area.scrollHeight;
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function appendMessageToChat(msgData) {
+    const area = document.getElementById('chat-messages-area');
+    const myUsername = localStorage.getItem("username");
+    
+    const isMine = msgData.sender_name === myUsername;
+    
+    const div = document.createElement('div');
+    div.className = `chat-msg ${isMine ? 'mine' : 'others'}`;
+    
+    let content = msgData.content;
+    
+    if (currentChatType !== 'public_community' && content.includes('BEGIN PGP MESSAGE')) {
+        try {
+            content = "[Mensagem Criptografada - Implementar Key Manager]"; 
+            content = await decryptMessage(content);
+        } catch (e) {
+            content = "[Erro ao descriptografar]";
+        }
+    }
+    
+    div.innerHTML = `<strong>${msgData.sender_name}:</strong> ${content}`;
+    area.appendChild(div);
+    area.scrollTop = area.scrollHeight;
+}
+
+async function handleSendChatMessage(e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input-text');
+    const text = input.value.trim();
+    if (!text || !activeChatRoomId) return;
+    
+    let finalContent = text;
+    
+    if (currentChatType !== 'public_community') {
+        finalContent = await encryptMessage(text, activeChatRoomId);
+        finalContent = "-----BEGIN PGP MESSAGE-----\n[Simulação] " + text;
+    }
+
+    chatSocket.send(JSON.stringify({
+        room_id: activeChatRoomId,
+        content: finalContent
+    }));
+    
+    input.value = '';
+}
+
+async function loadPublicCommunities() {
+    const grid = document.getElementById('public-communities-list');
+    grid.innerHTML = '<p>Carregando...</p>';
+    try {
+        const res = await apiFetch('/game/chat/public_communities');
+        const comms = await res.json();
+        
+        grid.innerHTML = '';
+        comms.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'shop-item-card';
+            div.innerHTML = `
+                <h3>${c.room_name}</h3>
+                <p>${c.description}</p>
+                <p><small>${c.member_count} membros</small></p>
+                ${c.has_password ? '<p style="color:orange"><i class="fa-solid fa-lock"></i> Requer Senha</p>' : ''}
+                <button class="buy-button buy-normal" onclick="joinCommunity(${c.room_id}, ${c.has_password})">Entrar</button>
+            `;
+            grid.appendChild(div);
+        });
+    } catch(e) {
+        console.error(e);
+        grid.innerHTML = '<p class="error-message">Erro ao carregar.</p>';
+    }
+}
+
+async function joinCommunity(roomId, hasPassword) {
+    let password = null;
+    if (hasPassword) {
+        password = prompt("Digite a senha da comunidade:");
+        if (!password) return;
+    }
+    
+    try {
+        const res = await apiFetch('/game/chat/join_community', {
+            method: 'POST',
+            body: JSON.stringify({ community_id: roomId, password: password })
+        });
+        if (res.ok) {
+            alert("Você entrou na comunidade!");
+            document.querySelector('[data-social-tab="chats"]').click();
+            setTimeout(() => loadMyChats(), 500); 
+        } else {
+            const d = await res.json();
+            alert("Erro: " + d.detail);
+        }
+    } catch(e) { alert("Erro ao entrar."); }
+}
+
+async function handleCreateCommunity(e) {
+    e.preventDefault();
+    const data = {
+        name: document.getElementById('comm-name').value,
+        description: document.getElementById('comm-desc').value,
+        password: document.getElementById('comm-pass').value || null
+    };
+    
+    try {
+        const res = await apiFetch('/game/chat/create_community', { method: 'POST', body: JSON.stringify(data) });
+        if (res.ok) {
+            alert("Comunidade criada!");
+            closeModal('create-community-modal');
+            loadPublicCommunities();
+        } else {
+            const d = await res.json();
+            alert(d.detail);
+        }
+    } catch(e) { alert("Erro."); }
+}
+
+async function loadMyTeamData() {
+    const container = document.getElementById('social-tab-team');
+    const loading = document.getElementById('team-loading');
+    const noTeam = document.getElementById('team-no-team');
+    const dashboard = document.getElementById('team-dashboard');
+    
+    loading.classList.remove('hidden');
+    noTeam.classList.add('hidden');
+    dashboard.classList.add('hidden');
+    
+    try {
+        const res = await apiFetch('/game/team/details');
+        const data = await res.json();
+        
+        loading.classList.add('hidden');
+        
+        if (!data.has_team) {
+            noTeam.classList.remove('hidden');
+            loadTeamInvites();
+        } else {
+            dashboard.classList.remove('hidden');
+            document.getElementById('my-team-name').textContent = data.info.team_name;
+            document.getElementById('my-team-tag').textContent = data.info.team_tag;
+            
+            const membersList = document.getElementById('team-members-list');
+            membersList.innerHTML = '';
+            data.members.forEach(m => {
+                const isOnline = m.status === 'online' || m.status === 'in_match' || m.status === 'in_lobby';
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${m.username} <small>(${m.character_name})</small></span>
+                    <span class="${isOnline ? 'status-online' : 'status-offline'}">
+                        <i class="fa-solid fa-circle"></i> ${m.status}
+                    </span>
+                `;
+                membersList.appendChild(li);
+            });
+
+            const myUsername = localStorage.getItem("username");
+            const amILeader = data.members.find(m => m.username === myUsername && m.id === data.info.leader_user_id);
+            if (amILeader) {
+                document.getElementById('team-leader-actions').classList.remove('hidden');
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        loading.textContent = "Erro ao carregar time.";
     }
 }
 
@@ -2112,6 +2378,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewTicketReplyForm) {
         viewTicketReplyForm.addEventListener('submit', handleTicketReply);
     }
+
+    document.querySelectorAll('[data-social-tab]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-social-tab]').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.social-content').forEach(c => c.classList.add('hidden'));
+            
+            const tabId = e.target.closest('button').dataset.socialTab;
+            e.target.closest('button').classList.add('active');
+            document.getElementById(`social-tab-${tabId}`).classList.remove('hidden');
+            
+            if (tabId === 'chats') loadMyChats();
+            if (tabId === 'communities') loadPublicCommunities();
+            if (tabId === 'team') loadMyTeamData();
+        });
+    });
+
+    document.getElementById('create-community-form')?.addEventListener('submit', handleCreateCommunity);
+    document.getElementById('chat-input-form')?.addEventListener('submit', handleSendChatMessage);
+    connectChatWebSocket();
 
     setupShopCategories();
     loadTranslations();

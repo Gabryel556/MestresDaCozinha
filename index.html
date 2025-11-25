@@ -6,6 +6,7 @@
     <title data-translate="site_title">Mestres da Cozinha</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://unpkg.com/openpgp@5.11.1/dist/openpgp.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -211,10 +212,113 @@
         </div>
 
         <div id="page-comunidade" class="page"> 
-            <div class="content-card">
-                <h1 data-translate="nav_community">Comunidade</h1>
-                <p data-translate="community_subtitle">Junte-se ao nosso servidor do Discord para novidades, eventos e suporte!</p> 
-                 <a href="https://discord.gg/WQuKj9gC8w" target="_blank" class="secondary-button" style="margin-top: 1rem;" data-translate="community_join">Entrar no Discord</a>
+            <div class="content-card" style="min-height: 80vh; display: flex; flex-direction: column;">
+                <h1 data-translate="nav_community">Central Social</h1>
+                
+                <nav class="shop-categories">
+                    <button class="shop-category-btn active" data-social-tab="discord">
+                        <i class="fa-brands fa-discord"></i> Discord Oficial
+                    </button>
+                    <button class="shop-category-btn" data-social-tab="chats">
+                        <i class="fa-solid fa-comments"></i> Chats & Amigos
+                    </button>
+                    <button class="shop-category-btn" data-social-tab="communities">
+                        <i class="fa-solid fa-users-rectangle"></i> Comunidades
+                    </button>
+                    <button class="shop-category-btn" data-social-tab="team">
+                        <i class="fa-solid fa-flag"></i> Meu Time
+                    </button>
+                </nav>
+
+                <div id="social-tab-discord" class="social-content active">
+                    <p data-translate="community_subtitle">Junte-se ao nosso servidor para novidades e suporte!</p> 
+                    <a href="https://discord.gg/WQuKj9gC8w" target="_blank" class="secondary-button" style="margin-top: 1rem;" data-translate="community_join">Entrar no Discord</a>
+                </div>
+
+                <div id="social-tab-chats" class="social-content hidden">
+                    <div class="chat-interface">
+                        <div class="chat-sidebar">
+                            <div class="chat-header">
+                                <h3>Conversas</h3>
+                                <button class="small-btn" id="refresh-chats-btn"><i class="fa-solid fa-sync"></i></button>
+                            </div>
+                            <div id="chat-list" class="chat-list">
+                                <p class="loading-text">Carregando conversas...</p>
+                            </div>
+                            <div class="chat-footer">
+                                <button class="secondary-button" style="width:100%; font-size: 0.8rem;" onclick="openModal('create-group-modal')">Novo Grupo</button>
+                            </div>
+                        </div>
+
+                        <div class="chat-window">
+                            <div id="chat-header-active" class="chat-header-active hidden">
+                                <span id="active-chat-name">Selecione um chat</span>
+                                <span id="active-chat-status" class="encrypted-badge"><i class="fa-solid fa-lock"></i> E2EE</span>
+                            </div>
+                            <div id="chat-messages-area" class="chat-messages-area">
+                                <div class="empty-chat-state">
+                                    <i class="fa-regular fa-comments"></i>
+                                    <p>Selecione uma conversa ou inicie uma nova com um amigo.</p>
+                                </div>
+                            </div>
+                            <form id="chat-input-form" class="chat-input-area hidden">
+                                <input type="text" id="chat-input-text" placeholder="Digite sua mensagem..." autocomplete="off">
+                                <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="social-tab-communities" class="social-content hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3>Comunidades Abertas</h3>
+                        <button class="register-btn" onclick="openModal('create-community-modal')">Criar Comunidade</button>
+                    </div>
+                    <div id="public-communities-list" class="shop-items-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                        <p>Carregando comunidades...</p>
+                    </div>
+                </div>
+
+                <div id="social-tab-team" class="social-content hidden">
+                    <div id="team-loading">Carregando dados do time...</div>
+                    <div id="team-no-team" class="hidden" style="text-align: center; padding: 2rem;">
+                        <p>Você não está em um time.</p>
+                        <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: center;">
+                            <button class="register-btn" data-modal-target="create-team-modal">Criar Time</button>
+                        </div>
+                        <div style="margin-top: 2rem;">
+                            <h4>Convites Pendentes</h4>
+                            <div id="my-team-invites-list"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="team-dashboard" class="hidden">
+                        <div class="team-header-banner">
+                            <h2 id="my-team-name">Nome do Time</h2>
+                            <span id="my-team-tag" class="team-tag-badge">TAG</span>
+                        </div>
+                        
+                        <div class="team-layout">
+                            <div class="team-roster">
+                                <h3>Membros</h3>
+                                <ul id="team-members-list" class="roster-list"></ul>
+                                <div id="team-leader-actions" class="hidden" style="margin-top: 1rem;">
+                                    <button class="secondary-button" onclick="openModal('invite-team-modal')">Convidar Jogador</button>
+                                </div>
+                                <button class="delete-btn" id="leave-team-btn" style="margin-top: 1rem; width: 100%;">Sair do Time</button>
+                            </div>
+                            <div class="team-chat-container">
+                                <h3>Chat do Time</h3>
+                                <div id="team-chat-area" class="chat-messages-area" style="height: 300px;"></div>
+                                <form id="team-chat-form" class="chat-input-area">
+                                    <input type="text" id="team-chat-input" placeholder="Mensagem para o time..." autocomplete="off">
+                                    <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -519,6 +623,46 @@
                     </select>
                 </div>
                 <button type="submit" class="register-btn">Começar a Jogar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="create-group-modal" class="modal hidden">
+        <div class="modal-overlay" data-modal-close="create-group-modal"></div>
+        <div class="modal-container">
+            <h2>Novo Chat em Grupo</h2>
+            <form id="create-group-form">
+                <div class="form-group">
+                    <label>Nome do Grupo</label>
+                    <input type="text" id="group-name" required>
+                </div>
+                <div class="form-group">
+                    <label>IDs dos Amigos (separados por vírgula)</label>
+                    <input type="text" id="group-invites" placeholder="Ex: 15, 22, 40">
+                </div>
+                <button type="submit" class="register-btn">Criar Grupo</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="create-community-modal" class="modal hidden">
+        <div class="modal-overlay" data-modal-close="create-community-modal"></div>
+        <div class="modal-container">
+            <h2>Criar Comunidade Pública</h2>
+            <form id="create-community-form">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="comm-name" required>
+                </div>
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <textarea id="comm-desc" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Senha (Opcional)</label>
+                    <input type="password" id="comm-pass" placeholder="Deixe em branco para aberto">
+                </div>
+                <button type="submit" class="register-btn">Criar</button>
             </form>
         </div>
     </div>

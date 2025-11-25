@@ -966,3 +966,143 @@ hr.section-divider {
     padding: 0.5rem 0.8rem;
     font-size: 0.9rem;
 }
+
+/* --- CSS DO CHAT & SOCIAL --- */
+.chat-interface {
+    display: flex;
+    height: 600px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #1a1a1a;
+}
+
+.chat-sidebar {
+    width: 250px;
+    border-right: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+    background-color: #222;
+}
+
+.chat-header {
+    padding: 1rem;
+    background-color: #2a2a2a;
+    border-bottom: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-list {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.chat-item {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.chat-item:hover { background-color: #333; }
+.chat-item.active { background-color: var(--accent-steel-blue); color: white; }
+
+.chat-item-name { font-weight: bold; display: block; }
+.chat-item-last { font-size: 0.8rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.chat-window {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #1a1a1a;
+}
+
+.chat-header-active {
+    padding: 1rem;
+    background-color: #2a2a2a;
+    border-bottom: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+}
+
+.encrypted-badge { color: var(--success-color); font-size: 0.8rem; border: 1px solid var(--success-color); padding: 2px 6px; border-radius: 4px; }
+
+.chat-messages-area {
+    flex-grow: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.chat-msg {
+    max-width: 70%;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    word-wrap: break-word;
+}
+
+.chat-msg.mine {
+    align-self: flex-end;
+    background-color: var(--accent-steel-blue);
+    color: white;
+}
+
+.chat-msg.others {
+    align-self: flex-start;
+    background-color: #333;
+    color: #ddd;
+}
+
+.chat-input-area {
+    padding: 1rem;
+    background-color: #2a2a2a;
+    border-top: 1px solid #444;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.chat-input-area input { 
+    flex-grow: 1; 
+}
+
+.chat-input-area button { 
+    padding: 0.8rem 1.2rem; 
+    background: var(--accent-orange); 
+    border: none; 
+    color: white; 
+    border-radius: 4px; 
+    cursor: pointer; 
+}
+
+.team-layout { 
+    display: grid; 
+    grid-template-columns: 1fr 2fr; 
+    gap: 1rem; 
+}
+
+.roster-list li { 
+    padding: 0.5rem; 
+    border-bottom: 1px solid #333; 
+    display: flex; 
+    justify-content: space-between; 
+}
+
+.status-online { 
+    color: var(--success-color); 
+}
+
+.status-offline { 
+    color: #666; 
+}
+
+.team-tag-badge { 
+    background: var(--accent-orange); 
+    padding: 2px 6px; 
+    border-radius: 4px; 
+    font-weight: bold; 
+    margin-left: 10px; 
+}

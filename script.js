@@ -1069,6 +1069,13 @@ function connectChatWebSocket() {
             if (activeChatRoomId == data.room_id) {
                 await appendMessageToChat(data);
             }
+            
+            const teamArea = document.getElementById('team-chat-area');
+            if (!document.getElementById('social-tab-team').classList.contains('hidden')) {                
+                if (window.currentTeamRoomId === data.room_id) {
+                    appendMessageToTeamArea(data);
+                }
+            }
         }
     };
     
@@ -1093,7 +1100,7 @@ async function loadMyChats() {
         }
         
         rooms.forEach(room => {
-            if (room.room_type === 'public_community') return; // Não mostra comunidades aqui
+            if (room.room_type === 'public_community') return;
 
             const div = document.createElement('div');
             div.className = 'chat-item';
@@ -1352,11 +1359,73 @@ async function loadMyTeamData() {
             if (amILeader) {
                 document.getElementById('team-leader-actions').classList.remove('hidden');
             }
+
+            if (data.chat_room_id) {
+                loadTeamChatHistory(data.chat_room_id);
+
+                const teamChatForm = document.getElementById('team-chat-form');
+                
+                const newForm = teamChatForm.cloneNode(true);
+                teamChatForm.parentNode.replaceChild(newForm, teamChatForm);
+                
+                newForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    handleSendTeamMessage(data.chat_room_id);
+                });
+            }
         }
     } catch (e) {
         console.error(e);
         loading.textContent = "Erro ao carregar time.";
     }
+}
+
+async function loadTeamChatHistory(roomId) {
+    const area = document.getElementById('team-chat-area');
+    area.innerHTML = '<p style="text-align:center; padding:1rem; color:#888;">Carregando...</p>';
+    
+    try {
+        const res = await apiFetch(`/game/chat/history/${roomId}`);
+        const msgs = await res.json();
+        area.innerHTML = '';
+        
+        msgs.forEach(msg => appendMessageToTeamArea(msg));
+        area.scrollTop = area.scrollHeight;
+    } catch (e) {
+        area.innerHTML = '<p style="color:red; text-align:center;">Erro ao carregar chat.</p>';
+    }
+}
+
+async function handleSendTeamMessage(roomId) {
+    const input = document.getElementById('team-chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    chatSocket.send(JSON.stringify({
+        room_id: roomId,
+        content: text
+    }));
+    
+    input.value = '';
+}
+
+function appendMessageToTeamArea(msgData) {
+    const area = document.getElementById('team-chat-area');
+    const myUsername = localStorage.getItem("username");
+    const isMine = msgData.sender_name === myUsername;
+    
+    const div = document.createElement('div');
+    div.className = `chat-msg ${isMine ? 'mine' : 'others'}`;
+    
+    const strong = document.createElement('strong');
+    strong.textContent = msgData.sender_name + ': ';
+    
+    const textNode = document.createTextNode(msgData.content);
+    
+    div.appendChild(strong);
+    div.appendChild(textNode);
+    area.appendChild(div);
+    area.scrollTop = area.scrollHeight;
 }
 
 async function loadFriendsList() {

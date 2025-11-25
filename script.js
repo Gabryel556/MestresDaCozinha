@@ -118,6 +118,8 @@ async function performLogin(username, password) {
             localStorage.setItem("jwt_token", result.access_token);
             localStorage.setItem("refresh_token", result.refresh_token);
             localStorage.setItem("username", result.username);
+            const payload = JSON.parse(atob(result.access_token.split('.')[1]));
+            localStorage.setItem("user_id", payload.id);
             updateLoginStatus(); 
             closeModal('login-modal'); 
             closeModal('register-modal');
@@ -1180,37 +1182,31 @@ async function openChatRoom(roomId, roomName, roomType) {
 async function appendMessageToChat(msgData) {
     const area = document.getElementById('chat-messages-area');
     const myUsername = localStorage.getItem("username");
-    
-    const isMine = msgData.sender_name === myUsername;
+    const myId = localStorage.getItem("user_id");
+    const isMine = (msgData.sender_name === myUsername) || (String(msgData.sender_id) === String(myId));
     
     const div = document.createElement('div');
     div.className = `chat-msg ${isMine ? 'mine' : 'others'}`;
     
     let content = msgData.content;
-    
-    if (currentChatType !== 'public_community' && content.includes('BEGIN PGP MESSAGE')) {
-        try {
-            content = "[Mensagem Criptografada]"; 
-            content = await decryptMessage(content);
-        } catch (e) {
-            content = "[Erro ao descriptografar]";
-        }
+    if (content.includes("BEGIN PGP MESSAGE")) {
+        content = "[Mensagem Criptografada]";
     }
     
-    const strong = document.createElement('strong');
-    strong.textContent = msgData.sender_name + ': ';
+    if (!isMine) {
+        const strong = document.createElement('strong');
+        strong.textContent = msgData.sender_name;
+        div.appendChild(strong);
+    }
     
     const textNode = document.createTextNode(content);
-    
-    div.appendChild(strong);
     div.appendChild(textNode);
     
     const timeSpan = document.createElement('span');
-    timeSpan.style.fontSize = '0.7rem';
-    timeSpan.style.opacity = '0.7';
-    timeSpan.style.marginLeft = '8px';
-    const date = new Date(msgData.timestamp);
-    timeSpan.textContent = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    const dateObj = new Date(msgData.timestamp);
+    const timeString = isNaN(dateObj.getTime()) ? 'Agora' : dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    timeSpan.textContent = timeString;
     div.appendChild(timeSpan);
 
     area.appendChild(div);
@@ -1223,16 +1219,9 @@ async function handleSendChatMessage(e) {
     const text = input.value.trim();
     if (!text || !activeChatRoomId) return;
     
-    let finalContent = text;
-    
-    if (currentChatType !== 'public_community') {
-        finalContent = await encryptMessage(text, activeChatRoomId);
-        finalContent = "-----BEGIN PGP MESSAGE-----\n[Simulação] " + text;
-    }
-
     chatSocket.send(JSON.stringify({
         room_id: activeChatRoomId,
-        content: finalContent
+        content: text
     }));
     
     input.value = '';
@@ -1437,18 +1426,31 @@ async function handleSendTeamMessage(roomId) {
 function appendMessageToTeamArea(msgData) {
     const area = document.getElementById('team-chat-area');
     const myUsername = localStorage.getItem("username");
-    const isMine = msgData.sender_name === myUsername;
+    const myId = localStorage.getItem("user_id");
+    
+    const isMine = (msgData.sender_name === myUsername) || (String(msgData.sender_id) === String(myId));
     
     const div = document.createElement('div');
     div.className = `chat-msg ${isMine ? 'mine' : 'others'}`;
     
-    const strong = document.createElement('strong');
-    strong.textContent = msgData.sender_name + ': ';
+    if (!isMine) {
+        const strong = document.createElement('strong');
+        strong.textContent = msgData.sender_name + ': ';
+        div.appendChild(strong);
+    }
     
-    const textNode = document.createTextNode(msgData.content);
-    
-    div.appendChild(strong);
+    let content = msgData.content;
+    if (content.includes("BEGIN PGP MESSAGE")) content = "[Criptografado]";
+
+    const textNode = document.createTextNode(content);
     div.appendChild(textNode);
+
+    const timeSpan = document.createElement('span');
+    const dateObj = new Date(msgData.timestamp);
+    const timeString = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    timeSpan.textContent = timeString;
+    div.appendChild(timeSpan);
+
     area.appendChild(div);
     area.scrollTop = area.scrollHeight;
 }

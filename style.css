@@ -1073,7 +1073,9 @@ hr.section-divider {
 }
 
 .chat-msg strong {
+    font-size: 0.8rem;
     color: var(--accent-orange);
+    margin-bottom: 4px;
 }
 
 .chat-msg.mine {
@@ -1081,7 +1083,6 @@ hr.section-divider {
     background-color: var(--accent-steel-blue);
     color: white;
     border-bottom-right-radius: 2px;
-    margin-left: auto;
 }
 
 .chat-msg.mine strong {
@@ -1091,10 +1092,8 @@ hr.section-divider {
 .chat-msg.others {
     align-self: flex-start;
     background-color: #333;
-    color: #e0e0e0;
+    color: #ddd;
     border-bottom-left-radius: 2px;
-    margin-right: auto;
-    border: 1px solid #444;
 }
 
 .chat-msg.others strong {
@@ -1106,31 +1105,55 @@ hr.section-divider {
 
 .chat-msg span {
     font-size: 0.7rem;
-    opacity: 0.6;
-    float: right;
-    margin-left: 10px;
+    opacity: 0.7;
+    align-self: flex-end;
     margin-top: 4px;
 }
 
 .chat-input-area {
     padding: 1rem;
-    background-color: #2a2a2a;
+    background-color: #222;
     border-top: 1px solid #444;
     display: flex;
-    gap: 0.5rem;
+    gap: 10px;
+    align-items: center;
 }
 
-.chat-input-area input { 
-    flex-grow: 1; 
+.chat-input-area input {
+    flex-grow: 1;
+    padding: 0.8rem 1rem;
+    border-radius: 25px;
+    border: 1px solid #444;
+    background-color: #1a1a1a;
+    color: #fff;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.3s;
 }
 
-.chat-input-area button { 
-    padding: 0.8rem 1.2rem; 
-    background: var(--accent-orange); 
-    border: none; 
-    color: white; 
-    border-radius: 4px; 
-    cursor: pointer; 
+.chat-input-area input:focus {
+    border-color: var(--accent-orange);
+}
+
+.chat-input-area button {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background-color: var(--accent-orange);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, background-color 0.2s;
+    font-size: 1.1rem;
+}
+
+.chat-input-area button:hover {
+    background-color: #d93a00;
+    transform: scale(1.1);
 }
 
 #refresh-chats-btn {

@@ -1183,6 +1183,9 @@ async function appendMessageToChat(msgData) {
     const area = document.getElementById('chat-messages-area');
     const myUsername = localStorage.getItem("username");
     const myId = localStorage.getItem("user_id");
+    
+    const rawDate = msgData.timestamp || msgData.created_at;
+    
     const isMine = (msgData.sender_name === myUsername) || (String(msgData.sender_id) === String(myId));
     
     const div = document.createElement('div');
@@ -1203,8 +1206,16 @@ async function appendMessageToChat(msgData) {
     div.appendChild(textNode);
     
     const timeSpan = document.createElement('span');
-    const dateObj = new Date(msgData.timestamp);
-    const timeString = isNaN(dateObj.getTime()) ? 'Agora' : dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    let timeString = '';
+    
+    if (rawDate) {
+        const dateObj = new Date(rawDate);
+        if (!isNaN(dateObj.getTime())) {
+            timeString = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        } else {
+            timeString = '';
+        }
+    }
     
     timeSpan.textContent = timeString;
     div.appendChild(timeSpan);
@@ -1428,6 +1439,8 @@ function appendMessageToTeamArea(msgData) {
     const myUsername = localStorage.getItem("username");
     const myId = localStorage.getItem("user_id");
     
+    const rawDate = msgData.timestamp || msgData.created_at;
+
     const isMine = (msgData.sender_name === myUsername) || (String(msgData.sender_id) === String(myId));
     
     const div = document.createElement('div');
@@ -1446,8 +1459,15 @@ function appendMessageToTeamArea(msgData) {
     div.appendChild(textNode);
 
     const timeSpan = document.createElement('span');
-    const dateObj = new Date(msgData.timestamp);
-    const timeString = isNaN(dateObj.getTime()) ? '' : dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    let timeString = '';
+    
+    if (rawDate) {
+        const dateObj = new Date(rawDate);
+        if (!isNaN(dateObj.getTime())) {
+            timeString = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+    }
+
     timeSpan.textContent = timeString;
     div.appendChild(timeSpan);
 

@@ -958,11 +958,22 @@ async function finalizeGoogleRegistration(e) {
         localStorage.setItem("jwt_token", result.access_token);
         localStorage.setItem("refresh_token", result.refresh_token);
         localStorage.setItem("username", result.username);
+        const payload = JSON.parse(atob(result.access_token.split('.')[1]));
+        localStorage.setItem("user_id", payload.id);
         
         closeModal('google-finalize-modal');
         sessionStorage.removeItem("temp_google_token");
+        
         updateLoginStatus();
-        alert("Conta criada com sucesso!");
+
+        let pgpPass = prompt("Conta criada! Para ativar o Chat Seguro, defina uma senha para suas chaves de criptografia (ou deixe em branco, mas será menos seguro):");
+        if (pgpPass === null) pgpPass = "";
+
+        console.log("Gerando chaves PGP para conta Google...");
+        await generateAndSaveKeys(pgpPass);
+
+        alert("Bem-vindo! Sua conta e chaves de segurança foram configuradas.");
+        startInactivityTimer();
 
     } catch (error) {
         alert("Erro: " + error.message);
@@ -3115,6 +3126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('google-login-btn')?.addEventListener('click', startGoogleLogin);
+    document.getElementById('google-register-btn')?.addEventListener('click', startGoogleLogin);
     document.getElementById('google-finalize-form')?.addEventListener('submit', finalizeGoogleRegistration);
     handleGoogleCallback()
     const viewTicketReplyForm = document.getElementById('view-ticket-reply-form');

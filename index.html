@@ -674,18 +674,28 @@
                     <label for="g-username">Nome de Usuário</label>
                     <input type="text" id="g-username" required minlength="3" maxlength="16">
                 </div>
+                <button type="submit" class="register-btn">Começar a Jogar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="character-setup-modal" class="modal hidden" style="z-index: 2000;">
+        <div class="modal-overlay"></div> <div class="modal-container">
+            <h2 style="color: var(--accent-orange);">Crie seu Personagem</h2>
+            <p class="modal-instruction">Bem-vindo! Para começar sua jornada culinária, defina sua identidade.</p>
+            <form id="character-setup-form">
                 <div class="form-group">
-                    <label for="g-character">Nome do Personagem</label>
-                    <input type="text" id="g-character" required minlength="3" maxlength="16">
+                    <label for="setup-char-name">Nome do Personagem (In-Game)</label>
+                    <input type="text" id="setup-char-name" required minlength="3" maxlength="16">
                 </div>
                 <div class="form-group">
-                    <label for="g-gender">Gênero do Personagem</label>
-                    <select id="g-gender" class="form-control" style="width: 100%; padding: 0.8rem; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 8px;" required>
+                    <label for="setup-gender">Gênero (Define visual inicial)</label>
+                    <select id="setup-gender" class="form-control" style="width: 100%; padding: 0.8rem; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 8px;" required>
                         <option value="male">Masculino</option>
                         <option value="female">Feminino</option>
                     </select>
                 </div>
-                <button type="submit" class="register-btn">Começar a Jogar</button>
+                <button type="submit" class="register-btn">Finalizar e Jogar</button>
             </form>
         </div>
     </div>

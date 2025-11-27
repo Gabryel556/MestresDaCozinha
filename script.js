@@ -115,21 +115,26 @@ async function performLogin(username, password) {
             body: JSON.stringify({ username, password })
         });
         const result = await response.json();
-        console.log("RESPOSTA DA API LOGIN:", result);
         
         if (response.status === 200 && result.access_token) {
             localStorage.setItem("jwt_token", result.access_token);
             localStorage.setItem("refresh_token", result.refresh_token);
             localStorage.setItem("username", result.username);
+            
             const payload = JSON.parse(atob(result.access_token.split('.')[1]));
             localStorage.setItem("user_id", payload.id);
+            
             updateLoginStatus(); 
+            
             await fetchAndCacheKeys(password);
+            
+            await checkCharacterSetup();
+
             closeModal('login-modal'); 
             closeModal('register-modal');
             document.getElementById('login-form')?.reset(); 
-            document.getElementById('register-form')?.reset();
             startInactivityTimer(); 
+            
         } else if (response.status === 200 && result['2fa_required'] === true) {
             console.log("API retornou 2fa_required. Abrindo modal 2FA...");
             closeModal('login-modal');
@@ -143,25 +148,37 @@ async function performLogin(username, password) {
     } catch (error) { console.error("Erro performLogin:", error); alert(`Erro: ${error.message}`); }
 }
 
-async function performRegister(username, email, password, characterName, gender) {
+async function checkCharacterSetup() {
+    try {
+        const res = await apiFetch('/users/me');
+        if(res.ok) {
+            const user = await res.json();
+            if (!user.character_name) {
+                console.log("Personagem não configurado. Abrindo setup...");
+                openModal('character-setup-modal');
+            }
+        }
+    } catch(e) { 
+        console.error("Erro ao verificar setup de personagem:", e); 
+    }
+}
+
+async function performRegister(username, email, password) {
     try {
         const response = await apiFetch(`/register`, {
             method: "POST",
             body: JSON.stringify({ 
                 username: username, 
                 email: email, 
-                password: password,
-                character_name: characterName,
-                gender: gender
+                password: password
             })
         });
+        
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail || `Erro ${response.status}`);
         
-        alert("Conta criada com sucesso! Verifique seu e-mail.");
-        console.log("Conta nova: Gerando chaves PGP automaticamente...");
-        await generateAndSaveKeys(password);
-        alert("Conta criada e segurança configurada!");
+        alert("Conta criada com sucesso! Verifique seu e-mail para ativar.");
+        
         document.getElementById('register-form')?.reset(); 
         closeModal('register-modal');
         
@@ -426,6 +443,7 @@ async function loadInventory() {
             if (item.image_url) {
                 const img = document.createElement('img');
                 img.src = item.image_url;
+                img.alt = item.item_name;
                 img.className = 'shop-item-image';
                 card.appendChild(img);
             } else {
@@ -440,11 +458,13 @@ async function loadInventory() {
             h3.textContent = `${item.item_name}${levelText}`;
             card.appendChild(h3);
 
-            const currentLevel = item.item_level || 1;
-            const levelBadge = document.createElement('div');
-            levelBadge.style.cssText = "background: #444; color: #fff; padding: 2px 8px; border-radius: 4px; display: inline-block; font-size: 0.8rem; margin-bottom: 5px;";
-            levelBadge.textContent = `Nível ${currentLevel} / 50`;
-            card.appendChild(levelBadge);
+            if (['skin', 'tool', 'pet'].includes(item.category)) {
+                const currentLevel = item.item_level || 1;
+                const levelBadge = document.createElement('div');
+                levelBadge.style.cssText = "background: #444; color: #fff; padding: 2px 8px; border-radius: 4px; display: inline-block; font-size: 0.8rem; margin-bottom: 5px;";
+                levelBadge.textContent = `Nível ${currentLevel} / 50`;
+                card.appendChild(levelBadge);
+            }
 
             const pDesc = document.createElement('p');
             pDesc.className = 'item-description';
@@ -454,28 +474,37 @@ async function loadInventory() {
             const actionDiv = document.createElement('div');
             actionDiv.className = 'buy-options';
             actionDiv.style.marginTop = '1rem';
+            
+            const currentLevel = item.item_level || 1;
 
-            if (currentLevel < 50 && item.category !== 'material') {
+            if (currentLevel < 50 && ['skin', 'tool', 'pet'].includes(item.category)) {
                 const upgradeBtn = document.createElement('button');
                 upgradeBtn.className = 'register-btn';
                 upgradeBtn.style.fontSize = '0.9rem';
+                upgradeBtn.style.width = '100%';
+                upgradeBtn.style.marginBottom = '5px';
+                let baseCost = 100;
+                if (item.rarity === 'rare') baseCost = 200;
+                else if (item.rarity === 'epic') baseCost = 500;
+                else if (item.rarity === 'legendary') baseCost = 1000;
                 
-                const baseCost = (item.rarity === 'rare' ? 250 : (item.rarity === 'epic' ? 500 : 100));
                 const nextCost = Math.floor(baseCost * Math.pow(currentLevel, 1.5));
                 
                 upgradeBtn.innerHTML = `<i class="fa-solid fa-arrow-up"></i> Melhorar (${nextCost} $)`;
                 upgradeBtn.onclick = () => handleUpgradeSkin(item.item_id, item.item_name);
                 actionDiv.appendChild(upgradeBtn);
-            } else if (currentLevel >= 50) {
+                
+            } else if (currentLevel >= 50 && ['skin', 'tool', 'pet'].includes(item.category)) {
                 const maxBtn = document.createElement('button');
                 maxBtn.className = 'buy-button disabled';
+                maxBtn.style.width = '100%';
                 maxBtn.textContent = 'Nível Máximo';
                 maxBtn.disabled = true;
                 actionDiv.appendChild(maxBtn);
             }
 
             const spanQty = document.createElement('span');
-            spanQty.style.cssText = 'display:block; margin-top:5px; font-size: 0.9rem; color: #aaa;';
+            spanQty.style.cssText = 'display:block; font-size: 1rem; font-weight: bold; color: var(--text-primary); margin-top: 5px;';
             spanQty.textContent = `Qtd: ${item.total_quantity}`;
             actionDiv.appendChild(spanQty);
 
@@ -490,10 +519,10 @@ async function loadInventory() {
 }
 
 async function handleUpgradeSkin(itemId, itemName) {
-    if (!confirm(`Deseja gastar moedas para melhorar o nível de '${itemName}'?`)) return;
+    if (!confirm(`Deseja gastar moedas para tentar melhorar o nível de '${itemName}'?`)) return;
 
     try {
-        const response = await apiFetch("/game/tools/upgrade", {
+        const response = await apiFetch("/game/skins/upgrade", {
             method: 'POST',
             body: JSON.stringify({ item_id: itemId })
         });
@@ -1046,74 +1075,6 @@ async function updateProfileData(newEmail) {
          alert(`Erro ao salvar: ${error.message}`);
      }
 }
-
-items.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'shop-item-card';
-    
-    // Lógica de visualização da imagem (mantida igual)
-    if (item.image_url) {
-        const img = document.createElement('img');
-        img.src = item.image_url;
-        img.className = 'shop-item-image';
-        card.appendChild(img);
-    } else {
-        const placeholder = document.createElement('div');
-        placeholder.className = 'shop-item-image-placeholder';
-        placeholder.textContent = '?';
-        card.appendChild(placeholder);
-    }
-
-    const h3 = document.createElement('h3');
-    // Mostra o nível ao lado do nome se for maior que 1
-    const levelText = (item.item_level && item.item_level > 1) ? ` (+${item.item_level})` : '';
-    h3.textContent = `${item.item_name}${levelText}`;
-    card.appendChild(h3);
-
-    // Badge de Nível
-    const currentLevel = item.item_level || 1;
-    const levelBadge = document.createElement('div');
-    levelBadge.style.cssText = "background: #444; color: #fff; padding: 2px 8px; border-radius: 4px; display: inline-block; font-size: 0.8rem; margin-bottom: 5px;";
-    levelBadge.textContent = `Nível ${currentLevel} / 50`;
-    card.appendChild(levelBadge);
-
-    const pDesc = document.createElement('p');
-    pDesc.className = 'item-description';
-    pDesc.textContent = item.description || '...';
-    card.appendChild(pDesc);
-
-    const actionDiv = document.createElement('div');
-    actionDiv.className = 'buy-options';
-    actionDiv.style.marginTop = '1rem';
-    
-    if (currentLevel < 50 && item.category !== 'material') {
-        const upgradeBtn = document.createElement('button');
-        upgradeBtn.className = 'register-btn';
-        upgradeBtn.style.fontSize = '0.9rem';
-        
-        const baseCost = (item.rarity === 'rare' ? 250 : (item.rarity === 'epic' ? 500 : 100));
-        const nextCost = Math.floor(baseCost * Math.pow(currentLevel, 1.5));
-        
-        upgradeBtn.innerHTML = `<i class="fa-solid fa-arrow-up"></i> Melhorar (${nextCost} $)`;
-        upgradeBtn.onclick = () => handleUpgradeSkin(item.item_id, item.item_name);
-        actionDiv.appendChild(upgradeBtn);
-    } else if (currentLevel >= 50) {
-        const maxBtn = document.createElement('button');
-        maxBtn.className = 'buy-button disabled';
-        maxBtn.textContent = 'Nível Máximo';
-        maxBtn.disabled = true;
-        actionDiv.appendChild(maxBtn);
-    }
-
-    // Quantidade
-    const spanQty = document.createElement('span');
-    spanQty.style.cssText = 'display:block; margin-top:5px; font-size: 0.9rem; color: #aaa;';
-    spanQty.textContent = `Qtd: ${item.total_quantity}`;
-    actionDiv.appendChild(spanQty);
-
-    card.appendChild(actionDiv);
-    grid.appendChild(card);
-});
 
 async function loadUserWallet() {
     const token = localStorage.getItem("jwt_token");
@@ -2983,13 +2944,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         
-        const characterName = document.getElementById('character_name').value;
-        const gender = document.getElementById('gender').value;
-
-        if (username && email && password && characterName && gender) {
-            performRegister(username, email, password, characterName, gender); 
+        if (username && email && password) {
+            performRegister(username, email, password); 
         } else {
             alert("Por favor, preencha todos os campos.");
+        }
+    });
+    const setupForm = document.getElementById('character-setup-form');
+    setupForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const charName = document.getElementById('setup-char-name').value;
+        const gender = document.getElementById('setup-gender').value;
+        const btn = setupForm.querySelector('button');
+
+        if (!charName || !gender) {
+            alert("Preencha todos os campos."); return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Criando...";
+
+        try {
+            const res = await apiFetch('/users/me/setup_character', {
+                method: 'POST',
+                body: JSON.stringify({ character_name: charName, gender: gender })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                alert("Personagem criado com sucesso! Bem-vindo(a) à cozinha.");
+                closeModal('character-setup-modal');
+                loadProfileData();
+            } else {
+                alert(data.detail || "Erro ao criar personagem.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Erro de conexão ao criar personagem.");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Finalizar e Jogar";
         }
     });
     editProfileForm?.addEventListener('submit', (e) => { 
@@ -3222,6 +3216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             changeLanguage(e.target.value);
         });
     }
+    
     document.getElementById('season-select')?.addEventListener('change', (e) => {
         loadRankingData();
     });
@@ -3284,10 +3279,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem("jwt_token")) {
         startInactivityTimer();
         startPresenceHeartbeat();
-    }
-    
-    if (localStorage.getItem("jwt_token")) {
-        startInactivityTimer();
+        checkCharacterSetup();
     }
     
     document.body.addEventListener('click', resetInactivityTimer, true);

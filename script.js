@@ -426,7 +426,6 @@ async function loadInventory() {
             if (item.image_url) {
                 const img = document.createElement('img');
                 img.src = item.image_url;
-                img.alt = item.item_name;
                 img.className = 'shop-item-image';
                 card.appendChild(img);
             } else {
@@ -437,30 +436,79 @@ async function loadInventory() {
             }
 
             const h3 = document.createElement('h3');
-            h3.textContent = item.item_name;
+            const levelText = (item.item_level && item.item_level > 1) ? ` (+${item.item_level})` : '';
+            h3.textContent = `${item.item_name}${levelText}`;
             card.appendChild(h3);
+
+            const currentLevel = item.item_level || 1;
+            const levelBadge = document.createElement('div');
+            levelBadge.style.cssText = "background: #444; color: #fff; padding: 2px 8px; border-radius: 4px; display: inline-block; font-size: 0.8rem; margin-bottom: 5px;";
+            levelBadge.textContent = `Nível ${currentLevel} / 50`;
+            card.appendChild(levelBadge);
 
             const pDesc = document.createElement('p');
             pDesc.className = 'item-description';
             pDesc.textContent = item.description || '...';
             card.appendChild(pDesc);
 
-            const buyDiv = document.createElement('div');
-            buyDiv.className = 'buy-options';
-            buyDiv.style.marginTop = '1rem';
-            
-            const spanQty = document.createElement('span');
-            spanQty.style.cssText = 'font-size: 1.2rem; font-weight: bold; color: var(--text-primary);';
-            spanQty.textContent = `Quantidade: ${item.total_quantity}`;
-            buyDiv.appendChild(spanQty);
+            const actionDiv = document.createElement('div');
+            actionDiv.className = 'buy-options';
+            actionDiv.style.marginTop = '1rem';
 
-            card.appendChild(buyDiv);
+            if (currentLevel < 50 && item.category !== 'material') {
+                const upgradeBtn = document.createElement('button');
+                upgradeBtn.className = 'register-btn';
+                upgradeBtn.style.fontSize = '0.9rem';
+                
+                const baseCost = (item.rarity === 'rare' ? 250 : (item.rarity === 'epic' ? 500 : 100));
+                const nextCost = Math.floor(baseCost * Math.pow(currentLevel, 1.5));
+                
+                upgradeBtn.innerHTML = `<i class="fa-solid fa-arrow-up"></i> Melhorar (${nextCost} $)`;
+                upgradeBtn.onclick = () => handleUpgradeSkin(item.item_id, item.item_name);
+                actionDiv.appendChild(upgradeBtn);
+            } else if (currentLevel >= 50) {
+                const maxBtn = document.createElement('button');
+                maxBtn.className = 'buy-button disabled';
+                maxBtn.textContent = 'Nível Máximo';
+                maxBtn.disabled = true;
+                actionDiv.appendChild(maxBtn);
+            }
+
+            const spanQty = document.createElement('span');
+            spanQty.style.cssText = 'display:block; margin-top:5px; font-size: 0.9rem; color: #aaa;';
+            spanQty.textContent = `Qtd: ${item.total_quantity}`;
+            actionDiv.appendChild(spanQty);
+
+            card.appendChild(actionDiv);
             grid.appendChild(card);
         });
 
     } catch (error) {
         console.error("Erro ao carregar inventário:", error);
         grid.innerHTML = `<p style="color: var(--error-color);">Erro ao carregar inventário: ${error.message}</p>`;
+    }
+}
+
+async function handleUpgradeSkin(itemId, itemName) {
+    if (!confirm(`Deseja gastar moedas para melhorar o nível de '${itemName}'?`)) return;
+
+    try {
+        const response = await apiFetch("/game/tools/upgrade", {
+            method: 'POST',
+            body: JSON.stringify({ item_id: itemId })
+        });
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert(result.message);
+            loadUserWallet();
+            loadInventory();
+        } else {
+            alert(`Falha no upgrade: ${result.detail}`);
+        }
+    } catch (error) {
+        console.error("Erro upgrade:", error);
+        alert("Erro ao processar upgrade.");
     }
 }
 
@@ -998,6 +1046,74 @@ async function updateProfileData(newEmail) {
          alert(`Erro ao salvar: ${error.message}`);
      }
 }
+
+items.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'shop-item-card';
+    
+    // Lógica de visualização da imagem (mantida igual)
+    if (item.image_url) {
+        const img = document.createElement('img');
+        img.src = item.image_url;
+        img.className = 'shop-item-image';
+        card.appendChild(img);
+    } else {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'shop-item-image-placeholder';
+        placeholder.textContent = '?';
+        card.appendChild(placeholder);
+    }
+
+    const h3 = document.createElement('h3');
+    // Mostra o nível ao lado do nome se for maior que 1
+    const levelText = (item.item_level && item.item_level > 1) ? ` (+${item.item_level})` : '';
+    h3.textContent = `${item.item_name}${levelText}`;
+    card.appendChild(h3);
+
+    // Badge de Nível
+    const currentLevel = item.item_level || 1;
+    const levelBadge = document.createElement('div');
+    levelBadge.style.cssText = "background: #444; color: #fff; padding: 2px 8px; border-radius: 4px; display: inline-block; font-size: 0.8rem; margin-bottom: 5px;";
+    levelBadge.textContent = `Nível ${currentLevel} / 50`;
+    card.appendChild(levelBadge);
+
+    const pDesc = document.createElement('p');
+    pDesc.className = 'item-description';
+    pDesc.textContent = item.description || '...';
+    card.appendChild(pDesc);
+
+    const actionDiv = document.createElement('div');
+    actionDiv.className = 'buy-options';
+    actionDiv.style.marginTop = '1rem';
+    
+    if (currentLevel < 50 && item.category !== 'material') {
+        const upgradeBtn = document.createElement('button');
+        upgradeBtn.className = 'register-btn';
+        upgradeBtn.style.fontSize = '0.9rem';
+        
+        const baseCost = (item.rarity === 'rare' ? 250 : (item.rarity === 'epic' ? 500 : 100));
+        const nextCost = Math.floor(baseCost * Math.pow(currentLevel, 1.5));
+        
+        upgradeBtn.innerHTML = `<i class="fa-solid fa-arrow-up"></i> Melhorar (${nextCost} $)`;
+        upgradeBtn.onclick = () => handleUpgradeSkin(item.item_id, item.item_name);
+        actionDiv.appendChild(upgradeBtn);
+    } else if (currentLevel >= 50) {
+        const maxBtn = document.createElement('button');
+        maxBtn.className = 'buy-button disabled';
+        maxBtn.textContent = 'Nível Máximo';
+        maxBtn.disabled = true;
+        actionDiv.appendChild(maxBtn);
+    }
+
+    // Quantidade
+    const spanQty = document.createElement('span');
+    spanQty.style.cssText = 'display:block; margin-top:5px; font-size: 0.9rem; color: #aaa;';
+    spanQty.textContent = `Qtd: ${item.total_quantity}`;
+    actionDiv.appendChild(spanQty);
+
+    card.appendChild(actionDiv);
+    grid.appendChild(card);
+});
 
 async function loadUserWallet() {
     const token = localStorage.getItem("jwt_token");

@@ -209,8 +209,22 @@ async function performRegister(username, email, password) {
 async function generateAndSaveKeys() {
     const username = localStorage.getItem("username");
     
-    const password = prompt("Para gerar NOVAS chaves, digite sua senha atual (será usada para encriptar a chave privada):");
+    const password = prompt("Para gerar NOVAS chaves, digite sua senha de login (Necessária para validação e encriptação):");
     if (!username || !password) return;
+
+    try {
+        const checkRes = await apiFetch('/auth/check_password', {
+            method: 'POST',
+            body: JSON.stringify({ password: password })
+        });
+        if (!checkRes.ok) {
+             const errorData = await checkRes.json();
+             throw new Error(errorData.detail || "Senha inválida.");
+        }
+    } catch (e) {
+        alert(`Falha na validação: ${e.message}. Tente novamente.`);
+        return;
+    }
 
     if(!confirm("ATENÇÃO: Gerar novas chaves tornará o histórico de chat antigo ilegível se você não tiver backup das chaves antigas. Continuar?")) return;
 
@@ -1543,6 +1557,7 @@ async function appendMessageToChat(msgData) {
     if (content && content.includes("BEGIN PGP MESSAGE")) {
         try {
             const decrypted = await decryptMessage(content);
+            
             if (decrypted.startsWith("[Erro:")) {
                 isError = true;
                 content = "🔒 Mensagem ilegível (Chave perdida ou alterada).";
@@ -1552,7 +1567,7 @@ async function appendMessageToChat(msgData) {
             }
         } catch (err) {
             console.warn("Falha visual decrypt:", err);
-            content = "🔒 [Erro na descriptografia]";
+            content = "🔒 Mensagem ilegível (Erro PGP CRÍTICO).";
             isError = true;
         }
     }
@@ -1562,6 +1577,8 @@ async function appendMessageToChat(msgData) {
         strong.textContent = msgData.sender_name;
         div.appendChild(strong);
     }
+
+    const pContent = document.createElement('p');
     
     if (isSecure) {
         const lockIcon = document.createElement('i');
@@ -1570,12 +1587,26 @@ async function appendMessageToChat(msgData) {
         lockIcon.style.marginRight = '5px';
         lockIcon.style.opacity = '0.7';
         lockIcon.title = "Criptografado Ponta-a-Ponta";
-        div.appendChild(lockIcon);
+        pContent.appendChild(lockIcon);
+    }
+    
+    pContent.appendChild(document.createTextNode(content));
+    div.appendChild(pContent);
+
+    if (isError && currentChatType === 'private') {
+        
+        if (!isMine) { 
+            const resyncBtn = document.createElement('button');
+            resyncBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Tentar recuperar';
+            resyncBtn.className = 'secondary-button small-action-btn';
+            resyncBtn.style.cssText = 'margin-top: 5px; font-size: 0.7rem; padding: 4px 8px; border-radius: 4px;';
+            resyncBtn.title = "Seu amigo precisa estar online e ter as chaves corretas.";
+            
+            resyncBtn.onclick = () => checkAndResyncPeer(activeChatRoomId, msgData.sender_id);
+            div.appendChild(resyncBtn);
+        }
     }
 
-    const textNode = document.createTextNode(content);
-    div.appendChild(textNode);
-    
     const timeSpan = document.createElement('span');
     let timeString = '';
     if (rawDate) {
@@ -1586,16 +1617,6 @@ async function appendMessageToChat(msgData) {
     }
     timeSpan.textContent = timeString;
     div.appendChild(timeSpan);
-
-    if (isError && !isMine && currentChatType === 'private') {
-        const resyncBtn = document.createElement('button');
-        resyncBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Tentar recuperar';
-        resyncBtn.className = 'small-btn';
-        resyncBtn.style.marginLeft = '10px';
-        resyncBtn.style.fontSize = '0.7rem';
-        resyncBtn.onclick = () => checkAndResyncPeer(activeChatRoomId, window.currentChatTargetId);
-        div.appendChild(resyncBtn);
-    }
 
     area.appendChild(div);
     area.scrollTop = area.scrollHeight;

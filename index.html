@@ -760,6 +760,54 @@
         </div>
     </div>
 
+    <div id="start-chat-modal" class="modal hidden" style="z-index: 2005;">
+        <div class="modal-overlay" data-modal-close="start-chat-modal"></div>
+        <div class="modal-container" style="max-width: 450px;">
+            <button class="modal-close-btn" data-modal-close="start-chat-modal">&times;</button>
+            <h2 style="color: var(--accent-orange);">Iniciar Chat Seguro</h2>
+            <p class="modal-instruction">
+                Iniciando conexão com: <strong id="start-chat-target-name" style="color: white;">...</strong>
+            </p>
+
+            <form id="start-chat-form">
+                <input type="hidden" id="start-chat-target-id">
+                
+                <div class="form-group">
+                    <label for="chat-cipher-mode" style="display: flex; align-items: center;">
+                        Modo de Operação (Cifra)
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">?</span>
+                            <div class="tooltip-content">
+                                <p><strong>CBC (Cipher Block Chaining):</strong></p>
+                                <ul>
+                                    <li>Mais tradicional e amplamente suportado.</li>
+                                    <li>Requer preenchimento (padding).</li>
+                                    <li>Não paralelizável (mais lento em arquivos grandes).</li>
+                                </ul>
+                                <hr style="border-color: #555; margin: 5px 0;">
+                                <p><strong>CTR (Counter Mode):</strong></p>
+                                <ul>
+                                    <li>Transforma bloco em fluxo (stream).</li>
+                                    <li>Não requer padding.</li>
+                                    <li>Muito rápido e paralelizável.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </label>
+                    
+                    <select id="chat-cipher-mode" class="form-control" style="width: 100%; padding: 0.8rem; background: #222; border: 1px solid #444; color: white; border-radius: 8px;">
+                        <option value="cbc">AES-256-CBC (Padrão)</option>
+                        <option value="ctr">AES-256-CTR (Rápido)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="register-btn" style="margin-top: 1rem;">
+                    <i class="fa-solid fa-lock"></i> Abrir Sala
+                </button>
+            </form>
+        </div>
+    </div>
+
     <script src="script.js" defer></script>
 </body>
 </html>

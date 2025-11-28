@@ -1299,6 +1299,70 @@ hr.section-divider {
     height: 30px;
 }
 
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+    margin-left: 8px;
+}
+
+.tooltip-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: var(--accent-steel-blue);
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: help;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.tooltip-content {
+    visibility: hidden;
+    width: 280px;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    text-align: left;
+    border-radius: 6px;
+    padding: 12px;
+    position: absolute;
+    z-index: 10;
+    bottom: 135%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    border: 1px solid var(--accent-orange);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    font-weight: normal;
+}
+
+.tooltip-content ul {
+    padding-left: 15px;
+    margin: 5px 0;
+}
+
+.tooltip-content::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--accent-orange) transparent transparent transparent;
+}
+
+.tooltip-container:hover .tooltip-content {
+    visibility: visible;
+    opacity: 1;
+}
+
 @media (max-width: 768px) {
 
     body {

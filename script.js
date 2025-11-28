@@ -15,6 +15,7 @@ let currentChatTargetId = null;
 let currentChatType = null;
 let myPrivateKeyObj = null;
 let myPublicKeyStr = null;
+let currentChatMode = 'cbc';
 
 /**
  * Wrapper 'fetch' personalizado para adicionar cabeçalhos padrão da API e do Ngrok.
@@ -164,20 +165,36 @@ async function checkCharacterSetup() {
 }
 
 async function performRegister(username, email, password) {
+    const btn = document.querySelector('#register-form button');
+    if(btn) { btn.disabled = true; btn.textContent = "Gerando chaves de segurança..."; }
+
     try {
+        console.log("Gerando par de chaves PGP localmente...");
+        
+        const { privateKey, publicKey } = await openpgp.generateKey({
+            type: 'ecc',
+            curve: 'curve25519',
+            userIDs: [{ name: username, email: email }],
+            passphrase: password
+        });
+
+        console.log("Chaves geradas. Enviando registro...");
+
         const response = await apiFetch(`/register`, {
             method: "POST",
             body: JSON.stringify({ 
                 username: username, 
                 email: email, 
-                password: password
+                password: password,
+                public_key: publicKey,
+                encrypted_private_key: privateKey
             })
         });
         
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail || `Erro ${response.status}`);
         
-        alert("Conta criada com sucesso! Verifique seu e-mail para ativar.");
+        alert("Conta criada com sucesso! Suas chaves de criptografia foram geradas e salvas com segurança. Verifique seu e-mail.");
         
         document.getElementById('register-form')?.reset(); 
         closeModal('register-modal');
@@ -185,14 +202,20 @@ async function performRegister(username, email, password) {
     } catch (error) { 
         console.error("Erro Registro:", error); 
         alert(`Erro ao registrar: ${error.message}`); 
+    } finally {
+        if(btn) { btn.disabled = false; btn.textContent = "Cadastrar"; }
     }
 }
 
-async function generateAndSaveKeys(password) {
+async function generateAndSaveKeys() {
     const username = localStorage.getItem("username");
+    
+    const password = prompt("Para gerar NOVAS chaves, digite sua senha atual (será usada para encriptar a chave privada):");
     if (!username || !password) return;
 
-    console.log("Gerando novas chaves de segurança...");
+    if(!confirm("ATENÇÃO: Gerar novas chaves tornará o histórico de chat antigo ilegível se você não tiver backup das chaves antigas. Continuar?")) return;
+
+    console.log("Gerando novo par de chaves...");
 
     try {
         const { privateKey, publicKey } = await openpgp.generateKey({
@@ -211,7 +234,7 @@ async function generateAndSaveKeys(password) {
         });
 
         if (response.ok) {
-            console.log("Chaves salvas com sucesso.");
+            console.log("Novas chaves salvas.");
             localStorage.setItem("pgp_private_key", privateKey);
             localStorage.setItem("pgp_public_key", publicKey);
             
@@ -221,12 +244,16 @@ async function generateAndSaveKeys(password) {
                     passphrase: password
                 });
                 myPublicKeyStr = publicKey;
+                alert("Novas chaves geradas e ativadas com sucesso!");
             } catch(e) {
-                console.error("Erro ao desbloquear chave recém criada", e);
+                console.error("Erro ao desbloquear nova chave", e);
             }
+        } else {
+            alert("Erro ao salvar chaves no servidor.");
         }
     } catch (error) {
         console.error("Erro fatal na criptografia:", error);
+        alert("Erro ao gerar chaves: " + error.message);
     }
 }
 
@@ -253,28 +280,53 @@ async function fetchAndCacheKeys(password) {
     }
 }
 
+async function encryptMessageForUser(text, publicKeyArmored) {
+    try {
+        const publicKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
+        const message = await openpgp.createMessage({ text: text });
+        return await openpgp.encrypt({
+            message,
+            encryptionKeys: publicKey
+        });
+    } catch (e) {
+        console.error("Erro ao encriptar para user específico:", e);
+        return null;
+    }
+}
+
 async function checkAndResyncPeer(roomId, peerId) {
     const peerPublicKeyArmored = await getTargetPublicKey(peerId);
+    if (!peerPublicKeyArmored) {
+        alert("Não foi possível obter a chave pública do parceiro para ressincronia.");
+        return;
+    }
+
     const history = await apiFetch(`/game/chat/history/${roomId}`);
     const messages = await history.json();
     
+    const savedMode = localStorage.getItem(`pref_cipher_mode_${peerId}`) || 'cbc';
+    console.log(`Ressincronizando histórico para User ${peerId} usando modo: ${savedMode.toUpperCase()}`);
+
     const messagesToResync = [];
 
     for (const msg of messages) {
-        
         let plainText = msg.content;
+        
         if (msg.content.includes("BEGIN PGP MESSAGE")) {
             try {
                 plainText = await decryptMessage(msg.content);
+                if (plainText.startsWith("[Erro:")) continue; 
             } catch (e) { continue; }
         }
         
         const reEncrypted = await encryptMessageForUser(plainText, peerPublicKeyArmored);
         
-        messagesToResync.push({
-            original_message_id: msg.message_id,
-            new_encrypted_content: reEncrypted
-        });
+        if (reEncrypted) {
+            messagesToResync.push({
+                original_message_id: msg.message_id,
+                new_encrypted_content: reEncrypted
+            });
+        }
     }
 
     if (messagesToResync.length > 0) {
@@ -286,7 +338,9 @@ async function checkAndResyncPeer(roomId, peerId) {
                 messages: messagesToResync
             })
         });
-        console.log(`Ressincronizadas ${messagesToResync.length} mensagens para o parceiro.`);
+        alert(`Sucesso! ${messagesToResync.length} mensagens sincronizadas/recuperadas para o parceiro.`);
+    } else {
+        alert("Nenhuma mensagem precisou ser ressincronizada.");
     }
 }
 
@@ -1756,6 +1810,21 @@ async function handleSendTeamMessage(roomId) {
     input.value = '';
 }
 
+function openStartChatModal(targetId, targetName) {
+    const modal = document.getElementById('start-chat-modal');
+    if(!modal) return;
+    
+    document.getElementById('start-chat-target-id').value = targetId;
+    document.getElementById('start-chat-target-name').textContent = targetName;
+    
+    const savedMode = localStorage.getItem(`pref_cipher_mode_${targetId}`);
+    if(savedMode) {
+        document.getElementById('chat-cipher-mode').value = savedMode;
+    }
+    
+    openModal('start-chat-modal');
+}
+
 function appendMessageToTeamArea(msgData) {
     const area = document.getElementById('team-chat-area');
     const myUsername = localStorage.getItem("username");
@@ -1868,8 +1937,8 @@ async function loadFriendsList() {
                 const chatBtn = document.createElement('button');
                 chatBtn.className = 'secondary-button small-action-btn';
                 chatBtn.innerHTML = '<i class="fa-solid fa-comment"></i>';
-                chatBtn.title = "Abrir Chat";
-                chatBtn.onclick = () => startPrivateChat(u.user_id, u.username);
+                chatBtn.title = "Configurar e Abrir Chat";
+                chatBtn.onclick = () => openStartChatModal(u.user_id, u.username);
                 
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'delete-btn small-action-btn';
@@ -2986,6 +3055,26 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = "Finalizar e Jogar";
         }
     });
+
+    const startChatForm = document.getElementById('start-chat-form');
+    if (startChatForm) {
+        startChatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const targetId = document.getElementById('start-chat-target-id').value;
+            const targetName = document.getElementById('start-chat-target-name').textContent;
+            const selectedMode = document.getElementById('chat-cipher-mode').value;
+            
+            currentChatMode = selectedMode;
+            localStorage.setItem(`pref_cipher_mode_${targetId}`, selectedMode);
+            
+            console.log(`Iniciando chat com ${targetName} usando modo: ${selectedMode.toUpperCase()}`);
+            
+            closeModal('start-chat-modal');
+            startPrivateChat(targetId, targetName);
+        });
+    }
+
     editProfileForm?.addEventListener('submit', (e) => { 
         e.preventDefault(); 
         const emailInput = document.getElementById('edit-email');

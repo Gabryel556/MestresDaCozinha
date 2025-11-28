@@ -319,6 +319,7 @@ async function fetchAndCacheKeys(password) {
         const res = await apiFetch('/users/me/keys_secure');
         if (res.ok) {
             const data = await res.json();
+            
             localStorage.setItem("pgp_public_key", data.public_key);
             localStorage.setItem("pgp_private_key", data.encrypted_private_key);
             
@@ -327,7 +328,10 @@ async function fetchAndCacheKeys(password) {
                 passphrase: password
             });
             myPublicKeyStr = data.public_key;
-            console.log("Chaves recuperadas e desbloqueadas com sucesso!");
+            
+            sessionStorage.setItem("pgp_unlocked_private_armored", data.encrypted_private_key);
+
+            console.log("Chaves recuperadas e desbloqueadas com sucesso! (Chave pronta para uso na sessão)");
         } else {
             console.log("Nenhuma chave no servidor. Gerando novas...");
             await generateAndSaveKeys(password);
@@ -335,6 +339,26 @@ async function fetchAndCacheKeys(password) {
     } catch (e) {
         console.error("Erro na autenticação PGP:", e);
     }
+}
+
+async function passiveKeyRestoration() {
+    const unlockedArmored = sessionStorage.getItem("pgp_unlocked_private_armored");
+    const publicKey = localStorage.getItem("pgp_public_key");
+
+    if (unlockedArmored && publicKey && !myPrivateKeyObj) {
+        try {
+            myPrivateKeyObj = await openpgp.readPrivateKey({ armoredKey: unlockedArmored });
+            myPublicKeyStr = publicKey; 
+            console.log("Estado E2EE restaurado de forma silenciosa (SessionStorage).");
+            closeModal('pgp-unlock-modal');
+            return true;
+        } catch (e) {
+            sessionStorage.removeItem("pgp_unlocked_private_armored");
+            console.error("Falha ao restaurar chave. Requer reautenticação completa.", e);
+            return false;
+        }
+    }
+    return false;
 }
 
 async function encryptMessageForUser(text, publicKeyArmored) {
@@ -3537,6 +3561,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startInactivityTimer();
         startPresenceHeartbeat();
         checkCharacterSetup();
+        passiveKeyRestoration();
     }
     
     document.body.addEventListener('click', resetInactivityTimer, true);

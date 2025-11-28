@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Verificando Email...</title>
-    <link rel="stylesheet" href="style.css"> <style> body { padding: 3rem; text-align: center; } </style>
+    <link rel="stylesheet" href="style.css"> 
+    <style> body { padding: 3rem; text-align: center; } </style>
 </head>
 <body>
     <div class="content-card" style="max-width: 600px; margin: auto;">
@@ -13,6 +14,7 @@
     </div>
 
     <script>
+        // Certifique-se que esta URL é a mesma que está rodando no seu terminal do Ngrok
         const API_URL = "https://precipitative-nonmotoring-michelina.ngrok-free.dev";
         const messageElement = document.getElementById('verification-message');
 
@@ -27,7 +29,24 @@
             }
 
             try {
-                const response = await fetch(`${API_URL}/verify?token=${token}`);
+                // AQUI ESTAVA O PROBLEMA: Faltava o header para pular o aviso do Ngrok
+                const response = await fetch(`${API_URL}/verify?token=${token}`, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "ngrok-skip-browser-warning": "true" // <--- ESTA LINHA RESOLVE O ERRO
+                    }
+                });
+
+                // Verificação extra para evitar o erro de JSON inválido
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") === -1) {
+                    // Se não for JSON, provavelmente é a página de erro do Ngrok ou 404
+                    const text = await response.text();
+                    console.error("Resposta não-JSON recebida:", text);
+                    throw new Error("O servidor retornou HTML em vez de dados. Verifique se o Ngrok está online.");
+                }
+
                 const result = await response.json();
 
                 if (!response.ok) {

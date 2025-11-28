@@ -362,6 +362,32 @@ async function passiveKeyRestoration() {
     return false;
 }
 
+async function restoreDecryptionState(password) {
+    const errorEl = document.getElementById('pgp-unlock-error');
+    const submitBtn = document.querySelector('#pgp-unlock-form button');
+    
+    errorEl.textContent = '';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Desbloqueando...';
+
+    try {
+        await fetchAndCacheKeys(password);
+        
+        if (myPrivateKeyObj) {
+            closeModal('pgp-unlock-modal');
+            document.getElementById('pgp-unlock-form').reset();
+            alert("Chat E2EE reativado com sucesso!");
+        } else {
+            throw new Error("Senha de desbloqueio inválida. Tente novamente.");
+        }
+    } catch (e) {
+        errorEl.textContent = `Falha: ${e.message}`;
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Desbloquear Chat';
+    }
+}
+
 async function encryptMessageForUser(text, publicKeyArmored) {
     try {
         const publicKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
@@ -3292,6 +3318,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const pgpUnlockForm = document.getElementById('pgp-unlock-form');
+    if (pgpUnlockForm) {
+        pgpUnlockForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = document.getElementById('pgp-unlock-password').value;
+            restoreDecryptionState(password);
+        });
+    }
+
     editProfileForm?.addEventListener('submit', (e) => { 
         e.preventDefault(); 
         const emailInput = document.getElementById('edit-email');
@@ -3588,6 +3623,11 @@ document.addEventListener('DOMContentLoaded', () => {
         checkCharacterSetup();
         passiveKeyRestoration();
         initializeChatCrypto();
+        setTimeout(() => { 
+            if (!myPrivateKeyObj && localStorage.getItem("pgp_private_key")) {
+                 openModal('pgp-unlock-modal');
+            }
+        }, 500);
     }
     
     document.body.addEventListener('click', resetInactivityTimer, true);

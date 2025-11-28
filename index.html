@@ -804,6 +804,29 @@
         </div>
     </div>
 
+    <div id="pgp-unlock-modal" class="modal hidden" style="z-index: 2010;">
+        <div class="modal-overlay"></div>
+        <div class="modal-container" style="max-width: 450px;">
+            <h2 style="color: var(--accent-orange);">🔐 Chave de Chat Bloqueada</h2>
+            <p class="modal-instruction" style="text-align: left;">
+                Sua chave de criptografia (E2EE) foi removida da memória (RAM) devido a um recarregamento forçado.
+                <br><br>
+                Digite sua senha de login para re-desbloquear a chave e continuar no chat seguro.
+            </p>
+            <form id="pgp-unlock-form">
+                <div class="form-group">
+                    <label for="pgp-unlock-password">Senha de Login</label>
+                    <input type="password" id="pgp-unlock-password" required>
+                </div>
+                <button type="submit" class="register-btn">Desbloquear Chat</button>
+                <div id="pgp-unlock-error" class="error-message"></div>
+            </form>
+            <p class="modal-instruction" style="font-size: 0.8rem; margin-top: 1rem;">
+                *Esta senha não é enviada ao servidor, apenas usada localmente para descriptografar sua chave privada.
+            </p>
+        </div>
+    </div>
+
     <script src="script.js" defer></script>
 </body>
 </html>

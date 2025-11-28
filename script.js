@@ -1375,7 +1375,7 @@ async function encryptMessage(text, roomId) {
                 alert("Erro E2EE: A chave pública do destinatário está ausente no servidor.");
                 return null;
             }
-            
+
             const publicKeys = [
                 await openpgp.readKey({ armoredKey: targetKeyArmored }),
                 await openpgp.readKey({ armoredKey: myPublicKeyStr })
@@ -1385,22 +1385,19 @@ async function encryptMessage(text, roomId) {
                 
                 console.log(`🛡️ MODO PADRÃO (PGP/CBC) selecionado.`);
                 
-                const algoConfig = {
-                    preferredEncryptionAlgorithms: [openpgp.enums.symmetric.aes256],
-                    preferredCompressionAlgorithm: openpgp.enums.compression.zip
-                };
-
                 const message = await openpgp.createMessage({ text: text });
                 
                 const encrypted = await openpgp.encrypt({
                     message,
-                    encryptionKeys: publicKeys,
-                    config: algoConfig
+                    encryptionKeys: publicKeys 
                 });
                 
                 return encrypted;
                 
-            } else if (mode === 'ctr') {
+            } 
+            
+            else if (mode === 'ctr') {
+                
                 const aesKey = await window.crypto.subtle.generateKey(
                     { name: "AES-CTR", length: 256 }, true, ["encrypt", "decrypt"]
                 );
@@ -1423,8 +1420,8 @@ async function encryptMessage(text, roomId) {
                 console.log(`⚡ MODO RÁPIDO (CTR/Híbrido) selecionado.`);
                 return JSON.stringify({
                     mode: 'CTR',
-                    envelope: pgpKeyEnvelope,
-                    content: aesResult.ciphertext
+                    envelope: pgpKeyEnvelope, 
+                    content: aesResult.ciphertext 
                 });
             }
 

@@ -780,24 +780,20 @@
                             <div class="tooltip-content">
                                 <p><strong>CBC (Cipher Block Chaining):</strong></p>
                                 <ul>
-                                    <li>Mais tradicional e amplamente suportado.</li>
-                                    <li>Requer preenchimento (padding).</li>
-                                    <li>Não paralelizável (mais lento em arquivos grandes).</li>
+                                    <li>Muito Seguro e lento.</li>
                                 </ul>
                                 <hr style="border-color: #555; margin: 5px 0;">
                                 <p><strong>CTR (Counter Mode):</strong></p>
                                 <ul>
-                                    <li>Transforma bloco em fluxo (stream).</li>
-                                    <li>Não requer padding.</li>
-                                    <li>Muito rápido e paralelizável.</li>
+                                    <li>Muito rápido e menos seguro.</li>
                                 </ul>
                             </div>
                         </div>
                     </label>
                     
                     <select id="chat-cipher-mode" class="form-control" style="width: 100%; padding: 0.8rem; background: #222; border: 1px solid #444; color: white; border-radius: 8px;">
-                        <option value="cbc">AES-256-CBC (Padrão)</option>
-                        <option value="ctr">AES-256-CTR (Rápido)</option>
+                        <option value="cbc">🛡️ MODO SEGURO (PGP/CBC)</option>
+                        <option value="ctr">⚡ MODO RÁPIDO (CTR/Híbrido)</option>
                     </select>
                 </div>
 

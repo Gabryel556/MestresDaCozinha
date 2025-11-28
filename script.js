@@ -1448,7 +1448,10 @@ async function decryptMessage(encryptedText) {
 
     if (messageObject && messageObject.mode === 'CTR') {
         try {
-            if (!myPrivateKeyObj) throw new Error("Chave privada não desbloqueada.");
+            if (!myPrivateKeyObj) {
+                console.error("Falha CTR: Chave privada não desbloqueada em memória.");
+                return "[Erro: Login Necessário para descriptografar (CTR)]";
+            }
             
             const { data: keyTransportData } = await openpgp.decrypt({
                 message: await openpgp.readMessage({ armoredMessage: messageObject.envelope }),
@@ -1459,20 +1462,23 @@ async function decryptMessage(encryptedText) {
 
             const aesKeyRaw = Uint8Array.from(atob(aesKeyBase64), c => c.charCodeAt(0));
             const importedAesKey = await window.crypto.subtle.importKey(
-                "raw", aesKeyRaw, { name: "AES-CTR" }, true, ["encrypt", "decrypt"]
+                "raw", aesKeyRaw, { name: "AES-CTR" }, false, ["encrypt", "decrypt"]
             );
 
             return await aesCtrDecrypt(messageObject.content, aesIvBase64, importedAesKey);
 
         } catch (e) {
-            console.error("Falha na descriptografia CTR:", e);
+            console.warn("Falha na descriptografia CTR:", e);
             return "[Erro: Descriptografia CTR falhou]";
         }
     } 
     
-    if (encryptedText.includes("-----BEGIN PGP MESSAGE-----")) {
+    if (encryptedText && encryptedText.includes("-----BEGIN PGP MESSAGE-----")) {
         try {
-            if (!myPrivateKeyObj) throw new Error("Chave privada não desbloqueada.");
+            if (!myPrivateKeyObj) {
+                console.error("Falha PGP: Chave privada não desbloqueada em memória.");
+                return "[Erro: Login Necessário para descriptografar (PGP)]";
+            }
             
             const message = await openpgp.readMessage({ armoredMessage: encryptedText });
             
@@ -1608,7 +1614,7 @@ async function openChatRoom(roomId, roomName, roomType, targetUserId = null) {
     currentChatType = roomType;
     
     window.currentChatTargetId = targetUserId; 
-    console.log("Chat aberto. Alvo para criptografia:", window.currentChatTargetId);
+    console.log(`Chat aberto. Alvo para encriptação: ${window.currentChatTargetId}`);
     
     document.getElementById('active-chat-name').textContent = roomName;
     document.getElementById('chat-input-form').classList.remove('hidden');

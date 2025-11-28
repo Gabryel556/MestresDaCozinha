@@ -367,18 +367,28 @@ async function checkAndResyncPeer(roomId, peerId) {
     const messagesToResync = [];
 
     for (const msg of messages) {
+        if (!msg.content) continue; 
+        
         let plainText = msg.content;
         
         if (msg.content.includes("BEGIN PGP MESSAGE")) {
             try {
                 plainText = await decryptMessage(msg.content);
+                
                 if (plainText.startsWith("[Erro:")) continue; 
-            } catch (e) { continue; }
+            } catch (e) { 
+                console.warn("Falha na descriptografia durante o resync.", e);
+                continue; 
+            }
         }
         
+        if (!msg.content.includes("BEGIN PGP MESSAGE") && plainText === msg.content) {
+            continue;
+        }
+
         const reEncrypted = await encryptMessageForUser(plainText, peerPublicKeyArmored);
         
-        if (reEncrypted) {
+        if (reEncrypted) { 
             messagesToResync.push({
                 original_message_id: msg.message_id,
                 new_encrypted_content: reEncrypted
@@ -1742,6 +1752,11 @@ async function handleSendChatMessage(e) {
     const input = document.getElementById('chat-input-text');
     const text = input.value.trim();
     if (!text || !activeChatRoomId) return;
+
+    if (chatSocket === null || chatSocket.readyState !== WebSocket.OPEN) {
+        alert("Erro: Conexão de chat perdida. Recarregue a página ou faça login novamente.");
+        return;
+    }
 
     let finalContent = text;
 

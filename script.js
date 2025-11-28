@@ -108,6 +108,50 @@ function setSafeHTML(element, text) {
     });
 }
 
+let currentAesKey = null;
+
+/**
+ * [CTR MODE] Encripta o conteúdo usando a Web Crypto API (SubtleCrypto).
+ * @param {string} plaintext 
+ * @param {CryptoKey} key - Chave AES-256 no formato CryptoKey.
+ * @returns {Promise<{ciphertext: string, iv: string}>}
+ */
+async function aesCtrEncrypt(plaintext, key) {
+    const iv = window.crypto.getRandomValues(new Uint8Array(16)); // IV de 16 bytes
+    const encoded = new TextEncoder().encode(plaintext);
+
+    const ciphertext = await window.crypto.subtle.encrypt(
+        { name: "AES-CTR", counter: iv, length: 128 },
+        key,
+        encoded
+    );
+
+    return {
+        ciphertext: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+        iv: btoa(String.fromCharCode(...iv))
+    };
+}
+
+/**
+ * [CTR MODE] Desencripta o conteúdo.
+ * @param {string} ciphertext - Mensagem em Base64.
+ * @param {string} ivBase64 - IV em Base64.
+ * @param {CryptoKey} key - Chave AES-256 no formato CryptoKey.
+ * @returns {Promise<string>}
+ */
+async function aesCtrDecrypt(ciphertext, ivBase64, key) {
+    const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+    const encryptedData = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
+
+    const decrypted = await window.crypto.subtle.decrypt(
+        { name: "AES-CTR", counter: iv, length: 128 },
+        key,
+        encryptedData
+    );
+
+    return new TextDecoder().decode(decrypted);
+}
+
 async function performLogin(username, password) {
     try {
         console.log("Chamando API /website/login...")
@@ -1308,78 +1352,146 @@ async function encryptMessage(text, roomId) {
     if (!myPublicKeyStr) myPublicKeyStr = localStorage.getItem("pgp_public_key");
     
     if (!myPublicKeyStr) {
-        if(localStorage.getItem("pgp_private_key")) {
-             console.warn("Chave pública não estava em memória, tentando recuperar...");
-        } else {
-            alert("Você precisa gerar suas chaves de segurança no perfil antes de usar o chat.");
-            return null;
+        if(localStorage.getItem("jwt_token")) {
+            console.warn("Chave pública do remetente não encontrada. O usuário deve gerar chaves.");
+            alert("Aviso: Gere suas chaves de segurança no perfil para começar a criptografar.");
         }
+        if (currentChatType !== 'private') return text;
+        return null; 
     }
+
+    const mode = currentChatMode || 'cbc'; 
 
     try {
         if (currentChatType === 'private') {
+            
             if (!window.currentChatTargetId) {
-                 console.warn("ID do destinatário desconhecido.");
+                 console.warn("ID do destinatário desconhecido. Não é possível encriptar.");
                  return null;
             }
 
             const targetKeyArmored = await getTargetPublicKey(window.currentChatTargetId);
             if (!targetKeyArmored) {
-                alert("Este usuário ainda não tem chaves de segurança. Peça para ele gerar no perfil.");
+                alert("Erro E2EE: A chave pública do destinatário está ausente no servidor.");
                 return null;
             }
-
+            
             const publicKeys = [
                 await openpgp.readKey({ armoredKey: targetKeyArmored }),
                 await openpgp.readKey({ armoredKey: myPublicKeyStr })
             ];
             
-            console.log(`🔒 Encriptando mensagem usando modo: ${currentChatMode.toUpperCase()} (PGP)`);
+            if (mode === 'cbc') {
+                
+                console.log(`🛡️ MODO PADRÃO (PGP/CBC) selecionado.`);
+                
+                const algoConfig = {
+                    preferredEncryptionAlgorithms: [openpgp.enums.symmetric.aes256],
+                    preferredCompressionAlgorithm: openpgp.enums.compression.zip
+                };
 
-            const message = await openpgp.createMessage({ text: text });
-            
-            const encrypted = await openpgp.encrypt({
-                message,
-                encryptionKeys: publicKeys 
-            });
+                const message = await openpgp.createMessage({ text: text });
+                
+                const encrypted = await openpgp.encrypt({
+                    message,
+                    encryptionKeys: publicKeys,
+                    config: algoConfig
+                });
+                
+                return encrypted;
+                
+            } else if (mode === 'ctr') {
+                const aesKey = await window.crypto.subtle.generateKey(
+                    { name: "AES-CTR", length: 256 }, true, ["encrypt", "decrypt"]
+                );
+                
+                const aesResult = await aesCtrEncrypt(text, aesKey);
+                
+                const aesKeyExported = await window.crypto.subtle.exportKey("raw", aesKey);
+                const aesKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(aesKeyExported)));
+                
+                const keyTransportMessage = JSON.stringify({ 
+                    key: aesKeyBase64, 
+                    iv: aesResult.iv 
+                });
 
-            return encrypted;
+                const pgpKeyEnvelope = await openpgp.encrypt({
+                    message: await openpgp.createMessage({ text: keyTransportMessage }),
+                    encryptionKeys: publicKeys
+                });
+
+                console.log(`⚡ MODO RÁPIDO (CTR/Híbrido) selecionado.`);
+                return JSON.stringify({
+                    mode: 'CTR',
+                    envelope: pgpKeyEnvelope,
+                    content: aesResult.ciphertext
+                });
+            }
+
+            throw new Error("Modo de cifra inválido."); 
         } 
         
         return text; 
 
     } catch (error) {
         console.error("Erro na encriptação:", error); 
-        alert("Erro ao criptografar mensagem. Verifique suas chaves.");
+        alert(`Erro ao criptografar mensagem. Verifique suas chaves. Detalhe: ${error.message}`);
         return null;
     }
 }
 
 async function decryptMessage(encryptedText) {
-    if (!encryptedText.includes("-----BEGIN PGP MESSAGE-----")) {
-        return encryptedText;
-    }
-
+    
+    let messageObject;
     try {
-        if (!myPrivateKeyObj) {
-            const privKeyArmored = localStorage.getItem("pgp_private_key");
-            if (!privKeyArmored) return "[Erro: Chave privada não encontrada]";
-            
-            myPrivateKeyObj = await openpgp.readPrivateKey({ armoredKey: privKeyArmored });
-        }
-
-        const message = await openpgp.readMessage({ armoredMessage: encryptedText });
-        
-        const { data: decrypted } = await openpgp.decrypt({
-            message,
-            decryptionKeys: myPrivateKeyObj
-        });
-
-        return decrypted;
-    } catch (error) {
-        console.error("Decryption failed:", error);
-        return "[Erro: Não foi possível descriptografar]";
+        messageObject = JSON.parse(encryptedText);
+    } catch (e) {
+        messageObject = null; 
     }
+
+    if (messageObject && messageObject.mode === 'CTR') {
+        try {
+            if (!myPrivateKeyObj) throw new Error("Chave privada não desbloqueada.");
+            
+            const { data: keyTransportData } = await openpgp.decrypt({
+                message: await openpgp.readMessage({ armoredMessage: messageObject.envelope }),
+                decryptionKeys: myPrivateKeyObj
+            });
+            
+            const { key: aesKeyBase64, iv: aesIvBase64 } = JSON.parse(keyTransportData);
+
+            const aesKeyRaw = Uint8Array.from(atob(aesKeyBase64), c => c.charCodeAt(0));
+            const importedAesKey = await window.crypto.subtle.importKey(
+                "raw", aesKeyRaw, { name: "AES-CTR" }, true, ["encrypt", "decrypt"]
+            );
+
+            return await aesCtrDecrypt(messageObject.content, aesIvBase64, importedAesKey);
+
+        } catch (e) {
+            console.error("Falha na descriptografia CTR:", e);
+            return "[Erro: Descriptografia CTR falhou]";
+        }
+    } 
+    
+    if (encryptedText.includes("-----BEGIN PGP MESSAGE-----")) {
+        try {
+            if (!myPrivateKeyObj) throw new Error("Chave privada não desbloqueada.");
+            
+            const message = await openpgp.readMessage({ armoredMessage: encryptedText });
+            
+            const { data: decrypted } = await openpgp.decrypt({
+                message,
+                decryptionKeys: myPrivateKeyObj
+            });
+
+            return decrypted;
+        } catch (error) {
+            console.warn("Descriptografia PGP falhou:", error);
+            return "[Erro: Descriptografia PGP falhou]";
+        }
+    }
+
+    return encryptedText;
 }
 
 function updateLoginStatus() {

@@ -1754,15 +1754,23 @@ async function handleSendChatMessage(e) {
     if (!text || !activeChatRoomId) return;
 
     if (chatSocket === null || chatSocket.readyState !== WebSocket.OPEN) {
-        alert("Erro: Conexão de chat perdida. Recarregue a página ou faça login novamente.");
-        return;
+        console.warn("Socket fechado. Tentando reconectar proativamente...");
+        
+        connectChatWebSocket(); 
+        
+        await new Promise(resolve => setTimeout(resolve, 300)); 
+        
+        if (chatSocket === null || chatSocket.readyState !== WebSocket.OPEN) {
+             alert("Erro: Conexão de chat perdida e falha na reconexão. Faça o login novamente.");
+             return;
+        }
     }
 
     let finalContent = text;
 
     if (currentChatType === 'private') {
         const encrypted = await encryptMessage(text, activeChatRoomId);
-        if (!encrypted) return;
+        if (!encrypted) return; 
         finalContent = encrypted;
     }
 

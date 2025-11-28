@@ -1296,38 +1296,63 @@ async function encryptMessage(text, roomId) {
     
     if (!myPublicKeyStr) {
         if(localStorage.getItem("pgp_private_key")) {
-             alert("Atenção: Chaves de segurança não carregadas. Gere-as no perfil.");
+             console.warn("Chave pública não estava em memória, tentando recuperar...");
+        } else {
+            alert("Você precisa gerar suas chaves de segurança no perfil antes de usar o chat.");
+            return null;
         }
-        return null;
     }
 
     try {
-        if (!window.currentChatTargetId && currentChatType === 'private') {
-             console.warn("ID do destinatário desconhecido. Abortando criptografia para evitar envio em texto plano.");
-             return null;
-        }
+        if (currentChatType === 'private') {
+            if (!window.currentChatTargetId) {
+                 console.warn("ID do destinatário desconhecido.");
+                 return null;
+            }
 
-        const targetKeyArmored = await getTargetPublicKey(window.currentChatTargetId);
-        if (!targetKeyArmored) {
-            alert("Este usuário ainda não configurou a segurança (Chaves PGP). Não é possível enviar mensagem privada.");
-            return null;
-        }
+            const targetKeyArmored = await getTargetPublicKey(window.currentChatTargetId);
+            if (!targetKeyArmored) {
+                alert("Este usuário ainda não tem chaves de segurança. Peça para ele gerar no perfil.");
+                return null;
+            }
 
-        const publicKeys = [
-            await openpgp.readKey({ armoredKey: targetKeyArmored }),
-            await openpgp.readKey({ armoredKey: myPublicKeyStr })
-        ];
+            const publicKeys = [
+                await openpgp.readKey({ armoredKey: targetKeyArmored }),
+                await openpgp.readKey({ armoredKey: myPublicKeyStr })
+            ];
+            
+            let algoConfig = {};
+            
+            if (currentChatMode === 'ctr') {
+                console.log("⚡ Modo Rápido (CTR/AES-128) selecionado.");
+                algoConfig = {
+                    preferredEncryptionAlgorithms: [openpgp.enums.symmetric.aes128],
+                    preferredCompressionAlgorithm: openpgp.enums.compression.zlib
+                };
+            } else {
+                console.log("🛡️ Modo Padrão (CBC/AES-256) selecionado.");
+                algoConfig = {
+                    preferredEncryptionAlgorithms: [openpgp.enums.symmetric.aes256],
+                    preferredCompressionAlgorithm: openpgp.enums.compression.zip
+                };
+            }
 
-        const message = await openpgp.createMessage({ text: text });
-        const encrypted = await openpgp.encrypt({
-            message,
-            encryptionKeys: publicKeys
-        });
+            const message = await openpgp.createMessage({ text: text });
+            
+            const encrypted = await openpgp.encrypt({
+                message,
+                encryptionKeys: publicKeys,
+                config: algoConfig
+            });
 
-        return encrypted;
+            return encrypted;
+        } 
+        
+        return text; 
 
     } catch (error) {
         console.error("Erro na encriptação:", error);
+        alert("Erro ao criptografar mensagem. Verifique suas chaves.");
         return null;
     }
 }

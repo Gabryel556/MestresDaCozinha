@@ -16,6 +16,7 @@ let currentChatType = null;
 let myPrivateKeyObj = null;
 let myPublicKeyStr = null;
 let currentChatMode = 'cbc';
+let chatSocketIsConnecting = false;
 
 /**
  * Wrapper 'fetch' personalizado para adicionar cabeçalhos padrão da API e do Ngrok.
@@ -1573,10 +1574,18 @@ function connectChatWebSocket() {
     const token = localStorage.getItem("jwt_token");
     if (!token) return;
     
+    if (chatSocketIsConnecting) return; 
+    chatSocketIsConnecting = true; 
+    
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const domain = API_URL.replace('http://', '').replace('https://', '');
     
     chatSocket = new WebSocket(`${protocol}//${domain}/ws/chat?token=${token}`);
+    
+    chatSocket.onopen = () => {
+        chatSocketIsConnecting = false;
+        console.log("WebSocket conectado.");
+    };
     
     chatSocket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
@@ -1598,6 +1607,7 @@ function connectChatWebSocket() {
     };
     
     chatSocket.onclose = () => {
+        chatSocketIsConnecting = false;
         console.log("WebSocket fechado. Tentando reconectar em 5s...");
         setTimeout(connectChatWebSocket, 5000);
     };
@@ -1804,6 +1814,21 @@ async function handleSendChatMessage(e) {
     }));
 
     input.value = '';
+}
+
+async function initializeChatCrypto() {
+    await passiveKeyRestoration();
+    if (!myPrivateKeyObj && localStorage.getItem("pgp_private_key")) {
+        openModal('pgp-unlock-modal');
+        return; 
+    }
+    
+    if (myPrivateKeyObj) {
+        connectChatWebSocket();
+        console.log("Chat ativado após restauração de estado.");
+    } else {
+        console.warn("Estado PGP não restaurado. Chat offline.");
+    }
 }
 
 async function loadPublicCommunities() {
@@ -3562,6 +3587,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startPresenceHeartbeat();
         checkCharacterSetup();
         passiveKeyRestoration();
+        initializeChatCrypto();
     }
     
     document.body.addEventListener('click', resetInactivityTimer, true);

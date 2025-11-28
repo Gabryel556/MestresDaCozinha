@@ -156,7 +156,6 @@ async function checkCharacterSetup() {
             const user = await res.json();
             if (!user.character_name) {
                 console.log("Personagem não configurado. Abrindo setup...");
-                openModal('character-setup-modal');
             }
         }
     } catch(e) { 
@@ -1321,28 +1320,13 @@ async function encryptMessage(text, roomId) {
                 await openpgp.readKey({ armoredKey: myPublicKeyStr })
             ];
             
-            let algoConfig = {};
-            
-            if (currentChatMode === 'ctr') {
-                console.log("⚡ Modo Rápido (CTR/AES-128) selecionado.");
-                algoConfig = {
-                    preferredEncryptionAlgorithms: [openpgp.enums.symmetric.aes128],
-                    preferredCompressionAlgorithm: openpgp.enums.compression.zlib
-                };
-            } else {
-                console.log("🛡️ Modo Padrão (CBC/AES-256) selecionado.");
-                algoConfig = {
-                    preferredEncryptionAlgorithms: [openpgp.enums.symmetric.aes256],
-                    preferredCompressionAlgorithm: openpgp.enums.compression.zip
-                };
-            }
+            console.log(`🔒 Encriptando mensagem usando modo: ${currentChatMode.toUpperCase()} (PGP)`);
 
             const message = await openpgp.createMessage({ text: text });
             
             const encrypted = await openpgp.encrypt({
                 message,
-                encryptionKeys: publicKeys,
-                config: algoConfig
+                encryptionKeys: publicKeys 
             });
 
             return encrypted;
@@ -1351,7 +1335,7 @@ async function encryptMessage(text, roomId) {
         return text; 
 
     } catch (error) {
-        console.error("Erro na encriptação:", error);
+        console.error("Erro na encriptação:", error); 
         alert("Erro ao criptografar mensagem. Verifique suas chaves.");
         return null;
     }

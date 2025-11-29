@@ -348,10 +348,12 @@ async function passiveKeyRestoration() {
 
     if (unlockedArmored && publicKey && !myPrivateKeyObj) {
         try {
-            myPrivateKeyObj = await openpgp.readPrivateKey({ armoredKey: unlockedArmored });
+            const privateKeyObj = await openpgp.readPrivateKey({ armoredKey: unlockedArmored });
+
+            myPrivateKeyObj = privateKeyObj;
             myPublicKeyStr = publicKey; 
+            
             console.log("Estado E2EE restaurado de forma silenciosa (SessionStorage).");
-            closeModal('pgp-unlock-modal');
             return true;
         } catch (e) {
             sessionStorage.removeItem("pgp_unlocked_private_armored");
@@ -1653,6 +1655,12 @@ function connectChatWebSocket() {
 async function loadMyChats() {
     const list = document.getElementById('chat-list');
     list.innerHTML = '<p class="loading-text">Carregando...</p>';
+
+    if (localStorage.getItem("jwt_token") && localStorage.getItem("pgp_private_key") && !myPrivateKeyObj) {
+        openModal('pgp-unlock-modal');
+        list.innerHTML = '<p class="error-message" style="padding:1rem;">🔐 Chave de Criptografia Bloqueada. Desbloqueie acima para ver o histórico.</p>';
+        return;
+    }
     
     try {
         const res = await apiFetch('/game/chat/rooms');
@@ -1854,17 +1862,16 @@ async function handleSendChatMessage(e) {
 }
 
 async function initializeChatCrypto() {
-    await passiveKeyRestoration();
+    const restored = await passiveKeyRestoration();
 
-    if (myPrivateKeyObj) {
+    if (restored) {
         connectChatWebSocket();
         console.log("Chat ativado após restauração de estado.");
         return;
     } 
     
     if (localStorage.getItem("jwt_token") && localStorage.getItem("pgp_private_key")) {
-        console.warn("Chave PGP trancada! Requer senha de desbloqueio.");
-        openModal('pgp-unlock-modal');
+        console.warn("Chave PGP trancada! Requer senha de desbloqueio para ler histórico e enviar.");
         return;
     }
     

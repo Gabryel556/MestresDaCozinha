@@ -153,6 +153,60 @@ async function aesCtrDecrypt(ciphertext, ivBase64, key) {
     return new TextDecoder().decode(decrypted);
 }
 
+async function deriveKeyFromPassword(password, salt) {
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey(
+        "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
+    );
+    return window.crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2", salt: enc.encode(salt),
+            iterations: 100000, hash: "SHA-256"
+        },
+        keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
+    );
+}
+
+async function encryptDataWithPass(text, password) {
+    const salt = "static_salt_mc_v1";
+    const key = await deriveKeyFromPassword(password, salt);
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(text);
+    
+    const encrypted = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv }, key, encoded
+    );
+    
+    const ivB64 = btoa(String.fromCharCode(...iv));
+    const contentB64 = btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+    return `${ivB64}:${contentB64}`;
+}
+
+async function decryptDataWithPass(encryptedBundle, password) {
+    try {
+        const [ivB64, contentB64] = encryptedBundle.split(':');
+        const salt = "static_salt_mc_v1";
+        const key = await deriveKeyFromPassword(password, salt);
+        
+        const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+        const content = Uint8Array.from(atob(contentB64), c => c.charCodeAt(0));
+        
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: iv }, key, content
+        );
+        return new TextDecoder().decode(decrypted);
+    } catch (e) {
+        console.error("Falha ao descriptografar MasterKey:", e);
+        return null;
+    }
+}
+
+function generateLocalMasterKey() {
+    const array = new Uint8Array(32);
+    window.crypto.getRandomValues(array);
+    return btoa(String.fromCharCode(...array));
+}
+
 async function performLogin(username, password) {
     try {
         console.log("Chamando API /website/login...")
@@ -166,16 +220,24 @@ async function performLogin(username, password) {
             localStorage.setItem("jwt_token", result.access_token);
             localStorage.setItem("refresh_token", result.refresh_token);
             localStorage.setItem("username", result.username);
-            
             const payload = JSON.parse(atob(result.access_token.split('.')[1]));
             localStorage.setItem("user_id", payload.id);
+
+            if (result.master_key_recovery) {
+                console.log("Recuperando Chave Mestra...");
+                const decryptedMasterKey = await decryptDataWithPass(result.master_key_recovery, password);
+                
+                if (decryptedMasterKey) {
+                    localStorage.setItem("local_master_key", decryptedMasterKey);
+                    console.log("Chave Mestra recuperada e salva com sucesso!");
+                } else {
+                    console.error("Senha correta para login, mas falha ao descriptografar Chave Mestra (pode ser chave antiga).");
+                }
+            }
             
             updateLoginStatus(); 
-            
-            await fetchAndCacheKeys(password);
-            
+            await fetchAndCacheKeys();
             await checkCharacterSetup();
-
             closeModal('login-modal'); 
             closeModal('register-modal');
             document.getElementById('login-form')?.reset(); 
@@ -210,20 +272,23 @@ async function checkCharacterSetup() {
 
 async function performRegister(username, email, password) {
     const btn = document.querySelector('#register-form button');
-    if(btn) { btn.disabled = true; btn.textContent = "Gerando chaves de segurança..."; }
+    if(btn) { btn.disabled = true; btn.textContent = "Criando segurança..."; }
 
     try {
-        console.log("Gerando par de chaves PGP localmente...");
+        console.log("1. Gerando Chave Mestra Local...");
+        const localMasterKey = generateLocalMasterKey();
         
+        console.log("2. Gerando par PGP usando a Chave Mestra...");
         const { privateKey, publicKey } = await openpgp.generateKey({
-            type: 'ecc',
-            curve: 'curve25519',
+            type: 'ecc', curve: 'curve25519',
             userIDs: [{ name: username, email: email }],
-            passphrase: password
+            passphrase: localMasterKey
         });
 
-        console.log("Chaves geradas. Enviando registro...");
+        console.log("3. Criando backup da Chave Mestra com a Senha de Login...");
+        const recoveryBlob = await encryptDataWithPass(localMasterKey, password);
 
+        console.log("4. Enviando registro...");
         const response = await apiFetch(`/register`, {
             method: "POST",
             body: JSON.stringify({ 
@@ -231,15 +296,17 @@ async function performRegister(username, email, password) {
                 email: email, 
                 password: password,
                 public_key: publicKey,
-                encrypted_private_key: privateKey
+                encrypted_private_key: privateKey,
+                master_key_recovery: recoveryBlob
             })
         });
         
         const result = await response.json();
         if (!response.ok) throw new Error(result.detail || `Erro ${response.status}`);
         
-        alert("Conta criada com sucesso! Suas chaves de criptografia foram geradas e salvas com segurança. Verifique seu e-mail.");
-        
+        localStorage.setItem("local_master_key", localMasterKey);
+
+        alert("Conta criada com sucesso! Chaves seguras geradas.");
         document.getElementById('register-form')?.reset(); 
         closeModal('register-modal');
         
@@ -315,7 +382,7 @@ async function generateAndSaveKeys() {
     }
 }
 
-async function fetchAndCacheKeys(password) {
+async function fetchAndCacheKeys() {
     try {
         const res = await apiFetch('/users/me/keys_secure');
         if (res.ok) {
@@ -324,21 +391,33 @@ async function fetchAndCacheKeys(password) {
             localStorage.setItem("pgp_public_key", data.public_key);
             localStorage.setItem("pgp_private_key", data.encrypted_private_key);
             
-            myPrivateKeyObj = await openpgp.decryptKey({
-                privateKey: await openpgp.readPrivateKey({ armoredKey: data.encrypted_private_key }),
-                passphrase: password
-            });
-            myPublicKeyStr = data.public_key;
-            
-            sessionStorage.setItem("pgp_unlocked_private_armored", data.encrypted_private_key);
-
-            console.log("Chaves recuperadas e desbloqueadas com sucesso! (Chave pronta para uso na sessão)");
-        } else {
-            console.log("Nenhuma chave no servidor. Gerando novas...");
-            await generateAndSaveKeys(password);
-        }
+            await tryUnlockKey();
+        } 
     } catch (e) {
-        console.error("Erro na autenticação PGP:", e);
+        console.error("Erro ao buscar chaves:", e);
+    }
+}
+
+async function tryUnlockKey() {
+    const armoredKey = localStorage.getItem("pgp_private_key");
+    const masterKey = localStorage.getItem("local_master_key");
+
+    if (armoredKey && masterKey) {
+        try {
+            myPrivateKeyObj = await openpgp.decryptKey({
+                privateKey: await openpgp.readPrivateKey({ armoredKey: armoredKey }),
+                passphrase: masterKey
+            });
+            myPublicKeyStr = localStorage.getItem("pgp_public_key");
+            console.log("✅ Chat Seguro: Chave PGP desbloqueada automaticamente via MasterKey.");
+            return true;
+        } catch(e) {
+            console.error("Falha ao desbloquear chave com MasterKey local:", e);
+            return false;
+        }
+    } else {
+        console.log("Aguardando login ou chave mestra para desbloquear chat.");
+        return false;
     }
 }
 
@@ -1655,11 +1734,9 @@ function connectChatWebSocket() {
 async function loadMyChats() {
     const list = document.getElementById('chat-list');
     list.innerHTML = '<p class="loading-text">Carregando...</p>';
-
+    
     if (localStorage.getItem("jwt_token") && localStorage.getItem("pgp_private_key") && !myPrivateKeyObj) {
-        openModal('pgp-unlock-modal');
-        list.innerHTML = '<p class="error-message" style="padding:1rem;">🔐 Chave de Criptografia Bloqueada. Desbloqueie acima para ver o histórico.</p>';
-        return;
+        await tryUnlockKey();
     }
     
     try {
@@ -1684,7 +1761,14 @@ async function loadMyChats() {
             if (room.room_type === 'public_community') icon = '<i class="fa-solid fa-globe"></i>';
 
             let lastMsg = room.last_message ? room.last_message : 'Nenhuma mensagem ainda';
-            if (lastMsg.includes("BEGIN PGP MESSAGE")) lastMsg = "🔒 [Mensagem Criptografada]";
+            
+            if (lastMsg.includes("BEGIN PGP MESSAGE")) {
+                if (myPrivateKeyObj) {
+                    lastMsg = "🔒 [Mensagem Criptografada]"; 
+                } else {
+                    lastMsg = "🔒 [Bloqueado]";
+                }
+            }
 
             div.innerHTML = `
                 <span class="chat-item-name">${icon} ${room.room_name}</span>
@@ -1834,9 +1918,7 @@ async function handleSendChatMessage(e) {
 
     if (chatSocket === null || chatSocket.readyState !== WebSocket.OPEN) {
         console.warn("Socket fechado. Tentando reconectar proativamente...");
-        
         connectChatWebSocket(); 
-        
         await new Promise(resolve => setTimeout(resolve, 300)); 
         
         if (chatSocket === null || chatSocket.readyState !== WebSocket.OPEN) {
@@ -1848,6 +1930,16 @@ async function handleSendChatMessage(e) {
     let finalContent = text;
 
     if (currentChatType === 'private') {
+        if (!myPrivateKeyObj) {
+            console.log("Chave PGP não está na memória. Tentando desbloqueio automático...");
+            const unlocked = await tryUnlockKey();
+            
+            if (!unlocked) {
+                alert("Erro Crítico de Segurança: Não foi possível restaurar suas chaves de criptografia automaticamente. Por favor, faça Logout e Login novamente para restaurar seu acesso seguro.");
+                return; 
+            }
+        }
+
         const encrypted = await encryptMessage(text, activeChatRoomId);
         if (!encrypted) return; 
         finalContent = encrypted;
@@ -1862,20 +1954,14 @@ async function handleSendChatMessage(e) {
 }
 
 async function initializeChatCrypto() {
-    const restored = await passiveKeyRestoration();
-
-    if (restored) {
+    const success = await tryUnlockKey();
+    if (success) {
         connectChatWebSocket();
-        console.log("Chat ativado após restauração de estado.");
-        return;
-    } 
-    
-    if (localStorage.getItem("jwt_token") && localStorage.getItem("pgp_private_key")) {
-        console.warn("Chave PGP trancada! Requer senha de desbloqueio para ler histórico e enviar.");
-        return;
+    } else {
+        if (localStorage.getItem("jwt_token")) {
+            console.warn("Chat não pode ser desbloqueado automaticamente (Falta MasterKey).");
+        }
     }
-    
-    console.warn("Estado PGP não restaurado. Chat offline.");
 }
 
 async function loadPublicCommunities() {

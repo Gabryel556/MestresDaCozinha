@@ -368,20 +368,31 @@ async function restoreDecryptionState(password) {
     
     errorEl.textContent = '';
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Desbloqueando...';
+    submitBtn.textContent = 'Verificando Senha...';
 
     try {
-        await fetchAndCacheKeys(password);
+        const checkRes = await apiFetch('/auth/check_password', {
+            method: 'POST',
+            body: JSON.stringify({ password: password })
+        });
+        if (!checkRes.ok) {
+            throw new Error("Senha de login incorreta. Acesso negado.");
+        }
+
+        await fetchAndCacheKeys(password); 
         
         if (myPrivateKeyObj) {
             closeModal('pgp-unlock-modal');
             document.getElementById('pgp-unlock-form').reset();
-            alert("Chat E2EE reativado com sucesso!");
+            console.log("Estado E2EE reativado. Conectando WebSocket...");
+            
+            connectChatWebSocket(); 
         } else {
-            throw new Error("Senha de desbloqueio inválida. Tente novamente.");
+            throw new Error("Chave PGP corrompida. Tente gerar novas chaves.");
         }
     } catch (e) {
         errorEl.textContent = `Falha: ${e.message}`;
+        document.getElementById('pgp-unlock-password').value = '';
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Desbloquear Chat';
@@ -1844,17 +1855,20 @@ async function handleSendChatMessage(e) {
 
 async function initializeChatCrypto() {
     await passiveKeyRestoration();
-    if (!myPrivateKeyObj && localStorage.getItem("pgp_private_key")) {
-        openModal('pgp-unlock-modal');
-        return; 
-    }
-    
+
     if (myPrivateKeyObj) {
         connectChatWebSocket();
         console.log("Chat ativado após restauração de estado.");
-    } else {
-        console.warn("Estado PGP não restaurado. Chat offline.");
+        return;
+    } 
+    
+    if (localStorage.getItem("jwt_token") && localStorage.getItem("pgp_private_key")) {
+        console.warn("Chave PGP trancada! Requer senha de desbloqueio.");
+        openModal('pgp-unlock-modal');
+        return;
     }
+    
+    console.warn("Estado PGP não restaurado. Chat offline.");
 }
 
 async function loadPublicCommunities() {

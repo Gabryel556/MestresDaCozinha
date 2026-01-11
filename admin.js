@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://precipitative-nonmotoring-michelina.ngrok-free.dev";
 
 function getAdminHeaders() {
     const key = sessionStorage.getItem("admin_api_key");

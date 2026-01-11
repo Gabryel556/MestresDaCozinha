@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel ADM - Mestres da Cozinha</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="style.css"> 
+    
+    <link rel="stylesheet" href="admin.css">
+    </head>
+<body>
+    <div class="admin-container">
+        <nav class="admin-sidebar">
+            <h1>Painel ADM</h1>
+            
+            <div class="admin-section" style="border: 1px solid var(--accent-steel-blue); background: #222; padding: 10px; margin-bottom: 1rem;">
+                <label style="color: #aaa; font-size: 0.8rem; display: block; margin-bottom: 5px;">MODO DE EDIÇÃO</label>
+                <select id="admin-context-selector" style="width: 100%; padding: 5px; background: #111; border: 1px solid #444; color: white;">
+                    <option value="live">🔴 AO VIVO (Imediato)</option>
+                    </select>
+                <div id="context-indicator" style="font-size: 0.75rem; color: var(--success-color); margin-top: 5px;">
+                    Alterações são aplicadas na hora.
+                </div>
+            </div>
+            
+            <section id="admin-key-login-section" class="admin-page active hidden" style="padding: 1.5rem; max-width: 400px; margin: 5rem auto; background: #333; border-radius: 8px;">
+                <h2>Autenticação de Admin</h2>
+                <form id="admin-key-login-form">
+                    <div class="form-group">
+                        <label for="admin-api-key">Admin API Key</label>
+                        <input type="password" id="admin-api-key" required style="width: 100%; box-sizing: border-box;">
+                    </div>
+                    <button type="submit" class="admin-btn" style="margin-top: 1.5rem;">Entrar</button>
+                    <p id="admin-key-login-error" style="color: var(--error-color); margin-top: 1rem;"></p>
+                </form>
+            </section>
+            <nav class="admin-sidebar-nav">
+                <a href="#" class="admin-nav-link active" data-page="dashboard"><i class="fa-solid fa-tachometer-alt"></i> Dashboard</a>
+                <a href="#" class="admin-nav-link" data-page="analytics"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+                <a href="#" class="admin-nav-link" data-page="users"><i class="fa-solid fa-users"></i> Gerenciar Usuários</a>
+                <a href="#" class="admin-nav-link" data-page="items"><i class="fa-solid fa-store"></i> Gerenciar Itens</a>
+                <a href="#" class="admin-nav-link" data-page="featured"><i class="fa-solid fa-star"></i> Loja Destaque</a>
+                <a href="#" class="admin-nav-link" data-page="codes"><i class="fa-solid fa-ticket"></i> Gerenciar Códigos</a>
+                <a href="#" class="admin-nav-link" data-page="achievements"><i class="fa-solid fa-star"></i> Gerenciar Conquistas</a>
+                <a href="#" class="admin-nav-link" data-page="crafting"><i class="fa-solid fa-mortar-pestle"></i> Crafting & Juízes</a>
+                <a href="#" class="admin-nav-link" data-page="battlepass"><i class="fa-solid fa-ticket-alt"></i> Battle Pass</a>
+                <a href="#" class="admin-nav-link" data-page="vip"><i class="fa-solid fa-gem"></i> Gerenciar VIP</a>
+                <a href="#" class="admin-nav-link" data-page="daily_rewards"><i class="fa-solid fa-calendar-check"></i> Recompensas Diárias</a>
+                <a href="#" class="admin-nav-link" data-page="events"><i class="fa-solid fa-bullhorn"></i> Eventos Globais</a>
+                <a href="#" class="admin-nav-link" data-page="news"><i class="fa-solid fa-newspaper"></i> Gerenciar Notícias</a>
+                <a href="#" class="admin-nav-link" data-page="moderation"><i class="fa-solid fa-gavel"></i> Moderação (Denúncias)</a>
+                <a href="#" class="admin-nav-link" data-page="orders"><i class="fa-solid fa-tasks"></i> Gerenciar Pedidos</a>
+                <a href="#" class="admin-nav-link" data-page="game-modes"><i class="fa-solid fa-gamepad"></i> Modos de Jogo</a>
+                <a href="#" class="admin-nav-link" data-page="levels"><i class="fa-solid fa-map"></i> Gerenciar Níveis/Provas</a>
+                <a href="#" class="admin-nav-link" data-page="transactions"><i class="fa-solid fa-credit-card"></i> Transações</a>
+                <a href="#" class="admin-nav-link" data-page="servers"><i class="fa-solid fa-server"></i> Servidores Ativos</a>
+                <a href="#" class="admin-nav-link" data-page="tickets"><i class="fa-solid fa-headset"></i> Tickets de Suporte</a>
+                <a href="#" class="admin-nav-link" data-page="mailbox"><i class="fa-solid fa-envelope"></i> Correio (Mailbox)</a>
+                <a href="#" class="admin-nav-link" data-page="api_keys"><i class="fa-solid fa-key"></i> Chaves de API</a>
+                <a href="#" class="admin-nav-link" data-page="alerts"><i class="fa-solid fa-triangle-exclamation"></i> Alertas de Atividade</a>
+                <a href="#" class="admin-nav-link" data-page="logs"><i class="fa-solid fa-shield-halved"></i> Logs de Admin</a>
+                <a href="#" class="admin-nav-link" data-page="settings"><i class="fa-solid fa-cogs"></i> Configurações</a>
+                <a href="#" id="admin-logout-btn" style="color: var(--accent-orange);"><i class="fa-solid fa-sign-out-alt"></i> Sair</a>
+            </nav>
+        </nav>
+
+        <main class="admin-main-content">
+            <section id="section-dashboard" class="admin-page active">
+                <h2>Dashboard</h2>
+                
+                <div class="admin-section" style="border-color: var(--accent-orange);">
+                    <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); text-align: center;">
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Total de Usuários</h3>
+                            <div id="db-total-users" style="font-size: 2.5rem; font-weight: bold; color: var(--accent-steel-blue);">...</div>
+                        </div>
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Novos Hoje</h3>
+                            <div id="db-new-users" style="font-size: 2.5rem; font-weight: bold; color: var(--success-color);">...</div>
+                        </div>
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Online Agora</h3>
+                            <div id="db-online-users" style="font-size: 2.5rem; font-weight: bold; color: var(--success-color);">...</div>
+                        </div>
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Servidores Ativos</h3>
+                            <div id="db-active-servers" style="font-size: 2.5rem; font-weight: bold; color: var(--accent-orange);">...</div>
+                        </div>
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Partidas Hoje</h3>
+                            <div id="db-matches-today" style="font-size: 2.5rem; font-weight: bold; color: var(--text-primary);">...</div>
+                        </div>
+                    </div>
+                    <button id="refresh-dashboard-btn" class="admin-btn secondary-button" style="margin-top: 1rem;">Atualizar Stats</button>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Enviar Mensagem Global (Broadcast)</h3>
+                    <form id="broadcast-form">
+                        <div class="form-grid" style="grid-template-columns: 1fr 100px;">
+                            <div class="form-group">
+                                <label for="broadcast_message">Mensagem (Aparece no jogo)</label>
+                                <input type="text" id="broadcast_message" required placeholder="Ex: Servidor reiniciando em 10 minutos!">
+                            </div>
+                            <div class="form-group">
+                                <label for="broadcast_duration">Duração (Min)</label>
+                                <input type="number" id="broadcast_duration" value="5" min="1" required>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <button type="submit" class="admin-btn">Enviar Agora (Ao Vivo)</button>
+                            <button type="button" id="btn-schedule-broadcast" class="admin-btn secondary-button">
+                                <i class="fa-solid fa-clock"></i> Agendar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+            
+            <section id="section-news" class="admin-page">
+                <h2>Gerenciar Notícias</h2>
+                <div class="admin-section">
+                    <form id="create-news-form">
+                        <h3 id="news-form-title">Criar Nova Notícia</h3>
+                        <input type="hidden" id="edit-news-id">
+                        <div class="form-grid" style="grid-template-columns: 1fr;">
+                            <div class="form-group">
+                                <label for="news_title">Título</label>
+                                <input type="text" id="news_title" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="news_content">Conteúdo</label>
+                                <textarea id="news_content" rows="4" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="news_expires_at">Data de Expiração (Opcional)</label>
+                                <input type="datetime-local" id="news_expires_at">
+                            </div>
+                        </div>
+                        <button type="submit" class="admin-btn">Salvar Notícia</button>
+                        <button type="button" id="cancel-edit-news-btn" class="admin-btn secondary-button hidden">Cancelar Edição</button>
+                    </form>
+                </div>
+                <hr>
+                <h3>Notícias Atuais</h3>
+                <button id="refresh-news-btn" class="admin-btn">Atualizar Lista</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Título</th>
+                            <th>Expira Em</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="news-list-body"></tbody>
+                </table>
+            </section>
+            
+            <section id="section-events" class="admin-page">
+                <h2>Eventos Globais</h2>
+                <div class="admin-section">
+                    <form id="create-event-form">
+                        <h3>Criar Novo Evento</h3>
+                        <div class="form-grid form-grid-3col">
+                            <div class="form-group">
+                                <label for="event_name">Nome do Evento</label>
+                                <input type="text" id="event_name" required placeholder="Ex: Fim de Semana 2x Moedas">
+                            </div>
+                            <div class="form-group">
+                                <label for="event_type">Tipo de Bônus</label>
+                                <select id="event_type" required>
+                                    <option value="currency_multiplier">Multiplicador de Moedas</option>
+                                    <option value="xp_multiplier">Multiplicador de XP</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="event_multiplier">Multiplicador (ex: 1.5, 2.0)</label>
+                                <input type="number" id="event_multiplier" step="0.1" value="1.5" min="1.1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="event_start_time">Início</label>
+                                <input type="datetime-local" id="event_start_time" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="event_end_time">Fim</label>
+                                <input type="datetime-local" id="event_end_time" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="admin-btn">Salvar Evento</button>
+                    </form>
+                </div>
+                <hr>
+                <h3>Eventos Agendados/Ativos</h3>
+                <button id="refresh-events-btn" class="admin-btn">Atualizar Lista</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Tipo</th>
+                            <th>Valor</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="events-list-body"></tbody>
+                </table>
+            </section>
+
+            <section id="section-logs" class="admin-page">
+                <h2>Logs de Administrador</h2>
+                <div class="admin-section">
+                    <button id="refresh-logs-btn" class="admin-btn">Atualizar Logs</button>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Quando</th>
+                                <th>Admin</th>
+                                <th>Ação</th>
+                                <th>Alvo</th>
+                                <th>Detalhes (JSON)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-logs-body"></tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <section id="section-items" class="admin-page"> 
+                <h2>Gerenciar Itens</h2>
+                
+                <div class="section-tabs">
+                    <button class="tab-link active" onclick="openTab(event, 'tab-items-list')">Listar Itens</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-items-create')">Criar/Editar</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-items-overrides')">Custo Manual (Níveis)</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-items-pets')">Habilidades Pet</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-items-discount')">Descontos</button>
+                </div>
+
+                <div id="tab-items-list" class="tab-content active">
+                    <div class="admin-toolbar" style="margin-bottom: 1rem; display: flex; justify-content: space-between;">
+                        <button id="refresh-items-btn" class="admin-btn">Atualizar Lista</button>
+                        <form id="delete-item-form" style="display:inline-flex; gap:5px;">
+                            <input type="number" id="delete_item_id" placeholder="ID para deletar" style="width: 150px;" required>
+                            <button type="submit" class="admin-btn delete-btn">Deletar por ID</button>
+                        </form>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th>Raridade</th>
+                                <th>Preço N/P</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="item-list-body"></tbody>
+                    </table>
+                </div>
+
+                <div id="tab-items-create" class="tab-content">
+                    <div class="admin-section">
+                        <form id="create-item-form">
+                            <h3 id="item-form-title">Criar Novo Item</h3> <input type="hidden" id="edit-item-id">
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Nome</label><input type="text" id="item_name" required></div>
+                                <div class="form-group"><label>Categoria</label>
+                                    <select id="item_category"><option value="skin">Skin</option><option value="pet">Pet</option><option value="tool">Ferramenta</option><option value="material">Material</option></select>
+                                </div>
+                                <div class="form-group"><label>Raridade</label><select id="item_rarity"><option value="common">Comum</option><option value="legendary">Lendário</option></select></div>
+                                <div class="form-group"><label>Preço N</label><input type="number" id="item_price_normal"></div>
+                                <div class="form-group"><label>Preço P</label><input type="number" id="item_price_premium"></div>
+                                <div class="form-group full-width"><label>Asset Key</label><input type="text" id="asset_key"></div>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 1.5rem; border-top: 1px solid #444; padding-top: 1rem;">
+                                <button type="submit" class="admin-btn">Salvar Item (Ao Vivo)</button>
+                                <button type="button" id="btn-schedule-item" class="admin-btn secondary-button">
+                                    <i class="fa-solid fa-calendar-plus"></i> Agendar na Manutenção
+                                </button>
+                                <button type="button" id="cancel-edit-item-btn" class="admin-btn secondary-button hidden" style="background: #555;">Cancelar Edição</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="tab-items-overrides" class="tab-content">
+                    <div class="admin-section" style="border-color: var(--accent-orange);">
+                        <h3>Definir Custo Manual de Upgrade</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Adicione exceções à fórmula padrão. Ex: "A Skin ID 50 custa 5000 para ir ao Nível 10".
+                        </p>
+                        <form id="create-skin-override-form">
+                            <div class="form-grid form-grid-3col" style="align-items: flex-end;">
+                                <div class="form-group">
+                                    <label>Item ID (Skin)</label>
+                                    <input type="number" id="override_item_id" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nível Alvo (Ex: 10)</label>
+                                    <input type="number" id="override_target_level" min="2" max="50" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Custo (Moedas)</label>
+                                    <input type="number" id="override_cost" min="0" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="admin-btn">Salvar Custo Manual</button>
+                        </form>
+                        
+                        <hr>
+                        
+                        <div class="form-grid" style="grid-template-columns: auto 1fr;">
+                            <button id="refresh-overrides-btn" class="admin-btn secondary-button" style="width: 200px;">Ver Overrides do Item ID:</button>
+                            <input type="number" id="view_overrides_item_id" placeholder="Digite o ID e clique no botão">
+                        </div>
+                        
+                        <table style="margin-top: 1rem;">
+                            <thead>
+                                <tr>
+                                    <th>Item ID</th>
+                                    <th>Nível Alvo</th>
+                                    <th>Custo Manual</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="overrides-list-body">
+                                <tr>
+                                    <td colspan="4">Selecione um item acima para ver as regras manuais.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="tab-items-pets" class="tab-content">
+                    <div id="pet-abilities-manager" class="hidden">
+                        <h3>Habilidades de: <span id="ability-pet-name"></span></h3>
+                        <form id="create-ability-form">
+                            <input type="hidden" id="ability_item_id"><input type="hidden" id="edit-ability-id">
+                            <div class="form-group"><label>Nome</label><input type="text" id="ability_name"></div>
+                            <button type="submit" class="admin-btn">Salvar Habilidade</button>
+                        </form>
+                        <table><tbody id="abilities-list-body"></tbody></table>
+                    </div>
+                    <p id="pet-placeholder-msg">Selecione um item do tipo "Pet" na lista para gerenciar habilidades.</p>
+                </div>
+                
+                <div id="tab-items-discount" class="tab-content">
+                    <div class="admin-section">
+                        <form id="batch-discount-form">
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group">
+                                    <label>IDs dos Itens (separados por vírgula)</label>
+                                    <textarea id="batch_item_ids" placeholder="1, 2, 50, 99"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Desconto (%)</label>
+                                    <input type="number" id="batch_discount_percent" min="0" max="100" placeholder="Ex: 20">
+                                </div>
+                                <div class="form-group">
+                                    <label>Expira em</label>
+                                    <input type="datetime-local" id="batch_discount_expires">
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:10px; margin-top:10px;">
+                                <button type="submit" class="admin-btn secondary-button">Aplicar Agora</button>
+                                <button type="button" id="btn-schedule-discount" class="admin-btn">
+                                    <i class="fa-solid fa-calendar-plus"></i> Agendar Promoção
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-users" class="admin-page">
+                <h2>Gerenciar Usuários</h2>
+                
+                <div class="section-tabs">
+                    <button class="tab-link active" onclick="openTab(event, 'tab-users-list')">Listar Usuários</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-users-grants')">Recursos & Itens</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-users-roles')">Cargos & Punições</button>
+                </div>
+
+                <div id="tab-users-list" class="tab-content active">
+                    <button id="refresh-users-btn" class="admin-btn">Atualizar Lista</button>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>User</th><th>Email</th><th>Moeda</th><th>Cash</th><th>ADM</th><th>Cargo</th><th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-list-body"></tbody>
+                    </table>
+                </div>
+
+                <div id="tab-users-grants" class="tab-content">
+                    <div class="admin-section">
+                        <div class="form-grid form-grid-2col">
+                            <form id="grant-currency-form"> 
+                                <h3>Moeda Normal</h3>
+                                <input type="text" id="grant_username" placeholder="Username" required style="margin-bottom:5px; width:100%">
+                                <input type="number" id="grant_amount" placeholder="Qtd" required style="margin-bottom:5px; width:100%">
+                                <button type="submit" class="admin-btn">Enviar</button>
+                            </form> 
+                            <form id="grant-premium-currency-form"> 
+                                <h3>Cash Premium</h3>
+                                <input type="text" id="grant_premium_username" placeholder="Username" required style="margin-bottom:5px; width:100%">
+                                <input type="number" id="grant_premium_amount" placeholder="Qtd" required style="margin-bottom:5px; width:100%">
+                                <button type="submit" class="admin-btn">Enviar</button>
+                            </form>
+                        </div>
+                        <hr>
+                        <form id="grant-item-form"> 
+                            <h3>Dar Item</h3>
+                            <div class="form-grid form-grid-3col">
+                                <input type="text" id="grant_item_username" placeholder="Username" required>
+                                <input type="text" id="grant_item_name" placeholder="Nome Item (Exato)" required>
+                                <input type="number" id="grant_item_quantity" value="1" required>
+                            </div>
+                            <button type="submit" class="admin-btn" style="margin-top:5px;">Enviar Item</button>
+                        </form> 
+                        <hr>
+                        <form id="grant-vip-form"> 
+                            <h3>Conceder VIP</h3>
+                            <div class="form-grid form-grid-3col">
+                                <input type="text" id="grant_vip_username" placeholder="Username" required>
+                                <select id="grant_vip_tier"><option value="basic">Basic</option><option value="master">Elite</option><option value="master">Premium</option></select>
+                                <input type="number" id="grant_vip_days" value="30" placeholder="Dias" required>
+                            </div>
+                            <button type="submit" class="admin-btn" style="margin-top:5px;">Ativar VIP</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="tab-users-roles" class="tab-content">
+                    <div class="admin-section">
+                        <form id="set-role-form"> 
+                            <h3>Definir Cargo</h3>
+                            <div class="form-grid form-grid-2col">
+                                <input type="text" id="role_username" placeholder="Username" required>
+                                <select id="role_id_select"><option>Carregando...</option></select>
+                            </div>
+                            <button type="submit" class="admin-btn secondary-button" style="margin-top:5px;">Salvar Cargo</button>
+                        </form>
+                        <hr>
+                        <form id="set-admin-form"> 
+                            <h3>Status de Admin</h3>
+                            <div class="form-grid form-grid-2col">
+                                <input type="text" id="admin_role_username" placeholder="Username" required>
+                                <select id="admin_role_status"><option value="true">Promover</option><option value="false">Rebaixar</option></select>
+                            </div>
+                            <button type="submit" class="admin-btn" style="margin-top:5px;">Alterar Status</button>
+                        </form>
+                        <hr>
+                        <div class="form-grid form-grid-2col">
+                            <form id="ban-user-form"> 
+                                <h3>Banir Usuário</h3>
+                                <input type="text" id="ban_username" placeholder="Username" required style="margin-bottom:5px; width:100%">
+                                <input type="number" id="ban_duration" placeholder="Horas (0=Perm)" style="margin-bottom:5px; width:100%">
+                                <input type="text" id="ban_reason" placeholder="Motivo" required style="margin-bottom:5px; width:100%">
+                                <button type="submit" class="admin-btn delete-btn">Banir</button>
+                            </form>
+                            <form id="unban-user-form"> 
+                                <h3>Remover Banimento</h3>
+                                <div class="form-grid" style="grid-template-columns: 1fr auto; align-items: flex-end; gap: 10px;">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="unban_username">Username</label>
+                                        <input type="text" id="unban_username" required>
+                                    </div>
+                                    <button type="submit" class="admin-btn secondary-button" style="height: 42px;">Desbanir</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-codes" class="admin-page">
+                <h2>Gerenciar Códigos de Resgate</h2>
+                <div class="admin-section">
+                    <form id="create-code-form">
+                        <h3 id="code-form-title">Criar Novo Código</h3>
+                        <input type="hidden" id="edit-code-id"> <div class="form-grid form-grid-2col">
+                            <div class="form-group"><label for="code_text">Código (Ex: EVENTO)</label><input type="text" id="code_text" required></div>
+                            <div class="form-group"><label for="code_max_uses">Usos Max (0=infinito)</label><input type="number" id="code_max_uses" value="100" min="0" required></div>
+                            <div class="form-group"><label for="code_reward_currency">Recompensa Moedas (Normal)</label><input type="number" id="code_reward_currency" value="0" min="0"></div>
+                            <div class="form-group"><label for="code_reward_premium">Recompensa Cash (Premium)</label><input type="number" id="code_reward_premium" value="0" min="0"></div>
+                            <div class="form-group form-grid-full">
+                                <label for="code_reward_items">Itens Recompensa (Formato JSON)</label>
+                                <textarea id="code_reward_items" rows="4" placeholder='[{"item_id": 1, "quantity": 1}, {"item_id": 2, "quantity": 5}]'></textarea>
+                                <small>Use o ID do item. Ex: [{"item_id": 1, "quantity": 1}]</small>
+                            </div>
+                        </div>
+                        <button type="submit" class="admin-btn">Salvar Código</button>
+                        <button type="button" id="cancel-edit-code-btn" class="admin-btn secondary-button hidden">Cancelar Edição</button> </form>
+                </div>
+
+                <hr>
+                <h3>Lista de Códigos</h3>
+                <button id="refresh-codes-btn" class="admin-btn">Atualizar Lista</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Código</th>
+                            <th>Status</th>
+                            <th>Usos (Atual/Max)</th>
+                            <th>Recompensas</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="redeem-codes-list-body">
+                        <tr><td colspan="6">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section id="section-achievements" class="admin-page">
+                <h2>Gerenciar Conquistas</h2>
+                <div class="admin-section">
+                    <form id="create-achievement-form">
+                        <h3 id="ach-form-title">Criar Nova Conquista</h3>
+                        <input type="hidden" id="edit-ach-id"> <div class="form-grid form-grid-2col">
+                            <div class="form-group">
+                                <label for="ach_id">ID Único (ex: FIRST_WIN)</label>
+                                <input type="text" id="ach_id" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ach_name">Nome (ex: Primeira Vitória)</label>
+                                <input type="text" id="ach_name" required>
+                            </div>
+                            <div class="form-group form-grid-full">
+                                <label for="ach_desc">Descrição</label>
+                                <input type="text" id="ach_desc" required>
+                            </div>
+                            <div class="form-group form-grid-full">
+                                <label for="ach_icon_url">URL do Ícone (Opcional)</label>
+                                <input type="url" id="ach_icon_url">
+                            </div>
+                            <div class="form-group">
+                                <label for="ach_reward_item_id">ID Item Recompensa (Opcional)</label>
+                                <input type="number" id="ach_reward_item_id" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="ach_reward_currency">Recompensa Moedas (Normal)</label>
+                                <input type="number" id="ach_reward_currency" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="ach_reward_premium">Recompensa Cash (Premium)</label>
+                                <input type="number" id="ach_reward_premium" value="0" min="0">
+                            </div>
+                        </div>
+                        <button type="submit" class="admin-btn">Salvar Conquista</button>
+                        <button type="button" id="cancel-edit-ach-btn" class="admin-btn secondary-button hidden">Cancelar Edição</button>
+                    </form>
+                </div>
+                
+                <hr>
+
+                <h3>Lista de Conquistas Definidas</h3>
+                <button id="refresh-achievements-btn" class="admin-btn">Atualizar Lista</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID (Chave)</th>
+                            <th>Nome</th>
+                            <th>Descrição</th>
+                            <th>Recompensas</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="achievements-list-body">
+                        <tr><td colspan="5">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="section-crafting" class="admin-page">
+                <h2>Gerenciar Crafting & Avaliação</h2>
+                
+                <div class="section-tabs">
+                    <button class="tab-link active" onclick="openTab(event, 'tab-craft-ingredients')">Ingredientes</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-craft-recipes')">Receitas</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-craft-steps')">Etapas (Prep)</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-craft-judges')">Juízes</button>
+                </div>
+
+                <div id="tab-craft-ingredients" class="tab-content active">
+                    <div class="admin-section">
+                        <form id="create-ingredient-form">
+                            <h3 id="ingredient-form-title">Criar Novo Ingrediente</h3> 
+                            <input type="hidden" id="edit-ingredient-id"> 
+                            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+                                <div class="form-group"><label>Item ID</label><input type="number" id="ing_item_id_link" required></div>
+                                <div class="form-group"><label>Nome</label><input type="text" id="ing_name" required></div>
+                                </div>
+                            
+                            <div style="display: flex; gap: 10px; margin-top: 1.5rem; border-top: 1px solid #444; padding-top: 1rem;">
+                                <button type="submit" class="admin-btn">Salvar Ingrediente (Ao Vivo)</button>
+                                <button type="button" id="btn-schedule-ingredient" class="admin-btn secondary-button">
+                                    <i class="fa-solid fa-calendar-plus"></i> Agendar
+                                </button>
+                                <button type="button" id="cancel-edit-ingredient-btn" class="admin-btn secondary-button hidden" style="background: #555;">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                    <hr>
+                    <h3>Lista de Ingredientes</h3>
+                    <button id="refresh-ingredients-btn" class="admin-btn secondary-button">Atualizar</button>
+                    <table>
+                        <thead><tr><th>ID</th><th>Nome</th><th>Item ID</th><th>Tóxico?</th><th>Ações</th></tr></thead>
+                        <tbody id="ingredients-list-body"></tbody>
+                    </table>
+                </div>
+
+                <div id="tab-craft-recipes" class="tab-content">
+                    <div class="admin-section">
+                        <form id="create-recipe-form">
+                            <h3 id="recipe-form-title">Criar Nova Receita</h3> 
+                            <input type="hidden" id="edit-recipe-id">
+                            <div class="form-grid form-grid-2col">
+                                <div class="form-group"><label>Item Saída (ID)</label><input type="number" id="recipe_output_id" required></div>
+                                <div class="form-group"><label>Qtd</label><input type="number" id="recipe_output_qty" value="1"></div>
+                            </div>
+                            <div class="form-group"><label>Ingredientes (JSON)</label><textarea id="recipe_ingredients" rows="3"></textarea></div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 1.5rem; border-top: 1px solid #444; padding-top: 1rem;">
+                                <button type="submit" class="admin-btn">Salvar Receita (Ao Vivo)</button>
+                                <button type="button" id="btn-schedule-recipe" class="admin-btn secondary-button">
+                                    <i class="fa-solid fa-calendar-plus"></i> Agendar
+                                </button>
+                                <button type="button" id="cancel-edit-recipe-btn" class="admin-btn secondary-button hidden" style="background: #555;">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                    <hr>
+                    <h3>Lista de Receitas</h3>
+                    <button id="refresh-recipes-btn" class="admin-btn secondary-button">Atualizar</button>
+                    <table>
+                        <thead><tr><th>ID</th><th>Saída</th><th>Ingredientes</th><th>Ações</th></tr></thead>
+                        <tbody id="recipes-list-body"></tbody>
+                    </table>
+                </div>
+
+                <div id="tab-craft-steps" class="tab-content">
+                    <div class="admin-section">
+                        <form id="create-prep-step-form">
+                            <h3>Nova Etapa de Preparação</h3>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Entrada (ID)</label><input type="number" id="prep_input_item_id"></div>
+                                <div class="form-group"><label>Tipo (cut/peel)</label><input type="text" id="prep_type"></div>
+                                <div class="form-group"><label>Saída (ID)</label><input type="number" id="prep_output_item_id"></div>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 1.5rem; border-top: 1px solid #444; padding-top: 1rem;">
+                                <button type="submit" class="admin-btn">Salvar Etapa (Ao Vivo)</button>
+                                <button type="button" id="btn-schedule-prep" class="admin-btn secondary-button">
+                                    <i class="fa-solid fa-calendar-plus"></i> Agendar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <hr>
+                    <h3>Lista de Etapas</h3>
+                    <button id="refresh-prep-steps-btn" class="admin-btn secondary-button">Atualizar</button>
+                    <table>
+                        <thead><tr><th>ID</th><th>Entrada</th><th>Tipo</th><th>Saída</th><th>Ações</th></tr></thead>
+                        <tbody id="prep-steps-list-body"></tbody>
+                    </table>
+                </div>
+
+                <div id="tab-craft-judges" class="tab-content">
+                    <div class="admin-section">
+                        <form id="create-judge-form">
+                            <h3 id="judge-form-title">Criar Novo Juiz</h3> <input type="hidden" id="edit-judge-id">
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Nome</label><input type="text" id="judge_name"></div>
+                                <div class="form-group"><label>Pref 1</label><input type="text" id="judge_pref_1"></div>
+                                <div class="form-group"><label>Pref 2</label><input type="text" id="judge_pref_2"></div>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 1.5rem; border-top: 1px solid #444; padding-top: 1rem;">
+                                <button type="submit" class="admin-btn">Salvar Juiz (Ao Vivo)</button>
+                                <button type="button" id="btn-schedule-judge" class="admin-btn secondary-button">
+                                    <i class="fa-solid fa-calendar-plus"></i> Agendar
+                                </button>
+                                <button type="button" id="cancel-edit-judge-btn" class="admin-btn secondary-button hidden" style="background: #555;">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                    <hr>
+                    <h3>Lista de Juízes</h3>
+                    <button id="refresh-judges-btn" class="admin-btn secondary-button">Atualizar</button>
+                    <table>
+                        <thead><tr><th>ID</th><th>Nome</th><th>Pref 1</th><th>Pref 2</th><th>Ações</th></tr></thead>
+                        <tbody id="judges-list-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="section-battlepass" class="admin-page">
+                <h2>Gerenciar Battle Pass & Missões</h2>
+
+                <div class="admin-section">
+                    <h3>Gerenciar Temporadas</h3>
+                    <form id="create-season-form">
+                        <h4 id="season-form-title">Criar Nova Temporada</h4>
+                        <input type="hidden" id="edit-season-id">
+                        <div class="form-grid form-grid-3col">
+                            <div class="form-group">
+                                <label for="season_name">Nome (ex: Temporada 1)</label>
+                                <input type="text" id="season_name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="season_start_date">Data Início</label>
+                                <input type="datetime-local" id="season_start_date" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="season_end_date">Data Fim</label>
+                                <input type="datetime-local" id="season_end_date" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="season_premium_pass_id">ID Item (Passe Premium)</label>
+                                <input type="number" id="season_premium_pass_id" placeholder="ID do item 'Passe Premium'">
+                            </div>
+                            <div class="form-group">
+                                <label for="season_master_pass_id">ID Item (Passe Master)</label>
+                                <input type="number" id="season_master_pass_id" placeholder="ID do item 'Passe Master'">
+                            </div>
+                        </div>
+                        <button type="submit" class="admin-btn">Salvar Temporada</button>
+                        <button type="button" id="cancel-edit-season-btn" class="admin-btn secondary-button hidden">Cancelar Edição</button>
+                    </form>
+                    <hr>
+                    <h4>Temporadas Existentes</h4>
+                    <button id="refresh-seasons-btn" class="admin-btn secondary-button">Atualizar Lista</button>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Início</th>
+                                <th>Fim</th>
+                                <th>Ativa?</th>
+                                <th>ID Passe Premium</th> 
+                                <th>ID Passe Master</th> 
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="seasons-list-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Gerenciar Recompensas e Missões</h3>
+                    <div class="form-group">
+                        <label for="bp_season_select">Selecione uma Temporada para gerir:</label>
+                        <select id="bp_season_select">
+                            <option value="">-- Carregando temporadas... --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="bp-reward-manager" class="admin-section hidden">
+                    <form id="create-reward-form">
+                        <h3 id="reward-form-title">Adicionar/Editar Recompensa de Nível</h3>
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                            <div class="form-group">
+                                <label for="reward_level">Nível</label>
+                                <input type="number" id="reward_level" min="1" required>
+                            </div>
+                        </div>
+                        <h4 style="margin-top: 1.5rem;">Recompensas (Trilha Gratuita)</h4>
+                        <div class="form-grid form-grid-3col">
+                            <div class="form-group"><label for="reward_free_item_id">Item ID (Grátis)</label><input type="number" id="reward_free_item_id" min="0"></div>
+                            <div class="form-group"><label for="reward_free_currency">Moedas (Grátis)</label><input type="number" id="reward_free_currency" value="0" min="0"></div>
+                            <div class="form-group"><label for="reward_free_premium">Cash (Grátis)</label><input type="number" id="reward_free_premium" value="0" min="0"></div>
+                        </div>
+                        <h4 style="margin-top: 1.5rem;">Recompensas (Trilha Premium)</h4>
+                        <div class="form-grid form-grid-3col">
+                            <div class="form-group"><label for="reward_premium_item_id">Item ID (Premium)</label><input type="number" id="reward_premium_item_id" min="0"></div>
+                            <div class="form-group"><label for="reward_premium_currency">Moedas (Premium)</label><input type="number" id="reward_premium_currency" value="0" min="0"></div>
+                            <div class="form-group"><label for="reward_premium_premium">Cash (Premium)</label><input type="number" id="reward_premium_premium" value="0" min="0"></div>
+                        </div>
+                        <button type="submit" class="admin-btn">Salvar Recompensa (Nível)</button>
+                        <button type="button" id="cancel-edit-reward-btn" class="admin-btn secondary-button hidden">Cancelar Edição</button>
+                    </form>
+                    <hr>
+                    <h4>Recompensas da Temporada</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nível</th>
+                                <th>Recompensa Grátis</th>
+                                <th>Recompensa Premium</th>
+                                <th>Ações</th> </tr>
+                        </thead>
+                        <tbody id="rewards-list-body"></tbody>
+                    </table>
+                </div>
+                
+                <div id="bp-quest-manager" class="admin-section hidden">
+                    <form id="create-quest-form">
+                        <h3 id="quest-form-title">Criar Nova Missão</h3>
+                        <input type="hidden" id="edit-quest-id">
+                        
+                        <div class="form-grid form-grid-2col">
+                            <div class="form-group"><label for="quest_name">Nome (ex: Jogue 3 Partidas)</label><input type="text" id="quest_name" required></div>
+                            <div class="form-group"><label for="quest_type">Tipo</label>
+                                <select id="quest_type">
+                                    <option value="daily">Diária</option>
+                                    <option value="weekly">Semanal</option>
+                                    <option value="seasonal">Sazonal</option>
+                                </select>
+                            </div>
+                            <div class="form-group form-grid-full"><label for="quest_desc">Descrição</label><input type="text" id="quest_desc" required></div>
+                            <div class="form-group"><label for="quest_objective_type">Objetivo</label>
+                                <select id="quest_objective_type">
+                                    <option value="play_match_mode">Jogar Modo (ex: chaotic)</option>
+                                    <option value="win_match_mode">Vencer Modo (ex: ranked)</option>
+                                    <option value="craft_item">Fabricar Item (ID do item)</option>
+                                    <option value="get_placement">Atingir Posição (ex: 3)</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label for="quest_objective_value_int">Valor Numérico (ex: 3)</label><input type="number" id="quest_objective_value_int" min="1" required></div>
+                            <div class="form-group"><label for="quest_objective_value_string">Valor Texto (ex: chaotic)</label><input type="text" id="quest_objective_value_string" placeholder="ID do Modo ou Item (se aplicável)"></div>
+                            <div class="form-group"><label for="quest_reward_xp">Recompensa XP</label><input type="number" id="quest_reward_xp" min="1" required></div>
+                        </div>
+                        
+                        <button type="submit" class="admin-btn">Salvar Missão</button>
+                        <button type="button" id="cancel-edit-quest-btn" class="admin-btn secondary-button hidden">Cancelar Edição</button>
+                    
+                    </form> <hr>
+                    
+                    <h4>Missões da Temporada</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th>Objetivo</th>
+                                <th>Valor</th>
+                                <th>XP</th>
+                                <th>Ações</th> </tr>
+                        </thead>
+                        <tbody id="quests-list-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="section-vip" class="admin-page">
+                <h2>Gerenciar Escala de Lealdade (VIP Sazonal)</h2>
+                <div class="admin-section">
+                    <form id="create-vip-reward-form">
+                        <h3>Adicionar/Editar Recompensa VIP por Nível</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            O Nível é desbloqueado com base no gasto sazonal de Cash (Gasto / 500).
+                        </p>
+                        <div class="form-grid" style="grid-template-columns: 1fr 2fr;">
+                            <div class="form-group">
+                                <label for="vip_level">Nível (ex: 1)</label>
+                                <input type="number" id="vip_level" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="vip_reward_description">Descrição (ex: Recompensas Nv 1)</label>
+                                <input type="text" id="vip_reward_description" required>
+                            </div>
+                        </div>
+                        
+                        <h4 style="margin-top: 1.5rem;">Pacote Fixo (Resgatado 1x)</h4>
+                        <div class="form-grid form-grid-2col">
+                            <div class="form-group">
+                                <label for="vip_reward_currency">Moedas (Normal)</label>
+                                <input type="number" id="vip_reward_currency" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="vip_reward_premium">Cash (Premium)</label>
+                                <input type="number" id="vip_reward_premium" value="0" min="0">
+                            </div>
+                        </div>
+
+                        <h4 style="margin-top: 1.5rem;">Itens de Escolha (Resgatados 1x CADA)</h4>
+                        <div class="form-grid form-grid-3col">
+                            <div class="form-group">
+                                <label for="vip_reward_item_id_1">Item ID (Escolha 1)</label>
+                                <input type="number" id="vip_reward_item_id_1" min="0" placeholder="ID do item">
+                            </div>
+                            <div class="form-group">
+                                <label for="vip_reward_item_id_2">Item ID (Escolha 2)</label>
+                                <input type="number" id="vip_reward_item_id_2" min="0" placeholder="ID do item">
+                            </div>
+                            <div class="form-group">
+                                <label for="vip_reward_item_id_3">Item ID (Escolha 3)</label>
+                                <input type="number" id="vip_reward_item_id_3" min="0" placeholder="ID do item">
+                            </div>
+                        </div>
+                        <button type="submit" class="admin-btn">Salvar Nível VIP</button>
+                    </form>
+                </div>
+
+                <div class="admin-section" style="border-color: var(--error-color);">
+                    <h3>Resetar Temporada VIP</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                        CUIDADO: Isto irá resetar a pontuação VIP sazonal E o histórico de resgate de TODOS os jogadores para 0.
+                    </p>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="admin-reset-vip-btn" class="admin-btn delete-btn">Resetar AGORA</button>
+                        <button id="btn-schedule-vip-reset" class="admin-btn secondary-button">Agendar Reset (Manutenção)</button>
+                    </div>
+                </div>
+                
+                <hr>
+
+                <h3>Lista de Níveis VIP Definidos</h3>
+                <button id="refresh-vip-rewards-btn" class="admin-btn">Atualizar Lista</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nível</th>
+                            <th>Descrição</th>
+                            <th>Pacote Fixo</th>
+                            <th>Itens de Escolha (IDs)</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vip-rewards-list-body">
+                        <tr><td colspan="5">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="section-settings" class="admin-page">
+                <h2>Configurações do Sistema</h2>
+                
+                <div class="section-tabs">
+                    <button class="tab-link active" onclick="openTab(event, 'tab-set-general')">Geral & Bots</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-set-economy')">Economia & Skins</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-set-ranking')">Ranking & BP</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-set-gameplay')">Gameplay & Score</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-set-outfits')">Roupas Padrão</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-set-maintenance')">Manutenção</button>
+                    <button class="tab-link" onclick="openTab(event, 'tab-set-updates')">Agendar Updates</button>
+                </div>
+
+                <form id="game-settings-form">
+                    <div id="tab-set-general" class="tab-content active">
+                        <div class="admin-section">
+                            <h3>Integração Discord (IDs)</h3>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Guild ID</label><input type="text" id="setting_bot_guild_id"></div>
+                                <div class="form-group"><label>Channel Painel</label><input type="text" id="setting_bot_panel_channel_id"></div>
+                                <div class="form-group"><label>Cat. Tickets</label><input type="text" id="setting_bot_ticket_category_id"></div>
+                                <div class="form-group"><label>Role Staff</label><input type="text" id="setting_bot_staff_role_id"></div>
+                                <div class="form-group"><label>Role Suporte</label><input type="text" id="setting_bot_support_role_id"></div>
+                                <div class="form-group"><label>Role Pagamento</label><input type="text" id="setting_bot_payment_role_id"></div>
+                                <div class="form-group"><label>Role Denúncia</label><input type="text" id="setting_bot_report_role_id"></div>
+                                <div class="form-group"><label>Role Verificado</label><input type="text" id="setting_bot_verified_role_id"></div>
+                            </div>
+                            <h3>Cliente</h3>
+                            <div class="form-group"><label>Versão Mínima</label><input type="text" id="setting_required_client_version"></div>
+                            <div class="form-group-checkbox" style="margin-top: 10px;">
+                                </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-set-economy" class="tab-content">
+                        <div class="admin-section" style="border-color: var(--accent-steel-blue);">
+                            <h3 style="color: var(--accent-steel-blue);">Sistema de Melhoria de Skins</h3>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group">
+                                    <label>Preço Base (Nvl 1)</label>
+                                    <input type="number" id="setting_skin_upg_base_price" placeholder="100">
+                                </div>
+                                <div class="form-group">
+                                    <label>Expoente Custo</label>
+                                    <input type="number" step="0.01" id="setting_skin_upg_exponent" placeholder="1.50">
+                                </div>
+                                <div class="form-group">
+                                    <label>% Bônus Stats</label>
+                                    <input type="number" step="0.01" id="setting_skin_upg_bonus_percent" placeholder="0.05">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="admin-section">
+                            <h3>Economia VIP & Lealdade</h3>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Custo Nível VIP</label><input type="number" id="setting_vip_cost_per_level"></div>
+                                <div class="form-group"><label>Tiers Lealdade</label><input type="text" id="setting_vip_loyalty_access_tiers" placeholder="master,elite"></div>
+                            </div>
+                            <h4>Multiplicadores de Pontos</h4>
+                            <div class="form-grid form-grid-2col">
+                                <div class="form-group"><label>Mult. Elite (1.5x)</label><input type="number" step="0.1" id="setting_vip_elite_bonus_multiplier"></div>
+                                <div class="form-group"><label>Mult. Master (2.0x)</label><input type="number" step="0.1" id="setting_vip_master_bonus_multiplier"></div>
+                            </div>
+                            <h4>Bônus Percentuais (0.1 = 10%)</h4>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Elite: Moeda %</label><input type="number" step="0.01" id="setting_vip_elite_currency_bonus_percent"></div>
+                                <div class="form-group"><label>Elite: Score %</label><input type="number" step="0.01" id="setting_vip_elite_score_bonus_percent"></div>
+                                <div class="form-group"><label>Elite: XP %</label><input type="number" step="0.01" id="setting_vip_elite_xp_bonus_percent"></div>
+                                <div class="form-group"><label>Master: Moeda %</label><input type="number" step="0.01" id="setting_vip_master_ingame_currency_bonus_percent"></div>
+                                <div class="form-group"><label>Master: Score %</label><input type="number" step="0.01" id="setting_vip_master_score_bonus_percent"></div>
+                                <div class="form-group"><label>Master: XP %</label><input type="number" step="0.01" id="setting_vip_master_xp_bonus_percent"></div>
+                            </div>
+                            <h4 style="margin-top:10px;">Bônus Cash (Antigo/Compatibilidade)</h4>
+                            <div class="form-group"><label>Master Currency Bonus %</label><input type="number" step="0.01" id="setting_vip_master_currency_bonus_percent"></div>
+                        </div>
+                    </div>
+
+                    <div id="tab-set-ranking" class="tab-content">
+                        <div class="admin-section">
+                            <h3>Battle Pass</h3>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>XP por Nível</label><input type="number" id="setting_bp_xp_per_level"></div>
+                                <div class="form-group"><label>XP Base Partida</label><input type="number" id="setting_bp_xp_base_match"></div>
+                                <div class="form-group"><label>XP Bônus Vitória</label><input type="number" id="setting_bp_xp_win_bonus"></div>
+                            </div>
+                        </div>
+                        <div class="admin-section">
+                            <h3>MMR (Ranking)</h3>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Base Change</label><input type="number" id="setting_mmr_base_change"></div>
+                                <div class="form-group"><label>Bônus Posição</label><input type="number" id="setting_mmr_placement_bonus"></div>
+                                <div class="form-group"><label>Posição Máx Bônus</label><input type="number" id="setting_mmr_placement_max_pos"></div>
+                                <div class="form-group"><label>Bônus MVP</label><input type="number" id="setting_mmr_mvp_bonus"></div>
+                                <div class="form-group"><label>Penalidade MVP</label><input type="number" id="setting_mmr_mvp_penalty"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-set-gameplay" class="tab-content">
+                        <div class="admin-section">
+                            <h3>Cálculo de Score (Juízes)</h3>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Pontos Base</label><input type="number" step="0.1" id="setting_score_base_points"></div>
+                                <div class="form-group"><label>Mult. Final</label><input type="number" step="0.1" id="setting_score_multiplier"></div>
+                                <div class="form-group"><label>Bônus Pref 1</label><input type="number" step="0.1" id="setting_score_pref_1_bonus"></div>
+                                <div class="form-group"><label>Bônus Pref 2</label><input type="number" step="0.1" id="setting_score_pref_2_bonus"></div>
+                                <div class="form-group"><label>Limite Penalidade</label><input type="number" step="0.1" id="setting_score_penalty_threshold"></div>
+                                <div class="form-group"><label>Divisor Penalidade</label><input type="number" step="0.1" id="setting_score_penalty_divider"></div>
+                            </div>
+                            <h4 style="color: var(--error-color);">Penalidades de Falha</h4>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Pts Falha Tóxica</label><input type="number" step="0.1" id="setting_score_fail_toxicity_points"></div>
+                                <div class="form-group"><label>Pts Falha Tag</label><input type="number" step="0.1" id="setting_score_fail_tag_points"></div>
+                                <div class="form-group"><label>Pts Falha Sabor</label><input type="number" step="0.1" id="setting_score_fail_no_flavor_points"></div>
+                                <div class="form-group"><label>Limiar Toxidade</label><input type="number" step="0.1" id="setting_score_fail_toxicity_threshold"></div>
+                                <div class="form-group"><label>Limiar Sabor Mín</label><input type="number" step="0.1" id="setting_score_fail_min_flavor_threshold"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-set-outfits" class="tab-content">
+                        <div class="admin-section">
+                            <h3>IDs de Itens Iniciais (Masculino)</h3>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Body ID</label><input type="number" id="setting_default_male_body_id"></div>
+                                <div class="form-group"><label>Pants ID</label><input type="number" id="setting_default_male_pants_id"></div>
+                                <div class="form-group"><label>Feet ID</label><input type="number" id="setting_default_male_feet_id"></div>
+                                <div class="form-group"><label>Hat ID</label><input type="number" id="setting_default_male_hat_id"></div>
+                                <div class="form-group"><label>Face ID</label><input type="number" id="setting_default_male_face_id"></div>
+                            </div>
+                            <h3>IDs de Itens Iniciais (Feminino)</h3>
+                            <div class="form-grid form-grid-3col">
+                                <div class="form-group"><label>Body ID</label><input type="number" id="setting_default_female_body_id"></div>
+                                <div class="form-group"><label>Pants ID</label><input type="number" id="setting_default_female_pants_id"></div>
+                                <div class="form-group"><label>Feet ID</label><input type="number" id="setting_default_female_feet_id"></div>
+                                <div class="form-group"><label>Hat ID</label><input type="number" id="setting_default_female_hat_id"></div>
+                                <div class="form-group"><label>Face ID</label><input type="number" id="setting_default_female_face_id"></div>
+                            </div>
+                            <div class="form-group-checkbox" style="margin-top:1rem;">
+                                <input type="checkbox" id="setting_show_outfit_visuals">
+                                <label for="setting_show_outfit_visuals">Habilitar Visuais de Roupa no Cliente</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-set-maintenance" class="tab-content">
+                        <div class="admin-section" style="border-color: var(--error-color);">
+                            <h3>Controles de Emergência</h3>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <button type="button" id="toggle-vip-purchases-btn" class="admin-btn">Alternar Compras VIP</button>
+                                <button type="button" id="toggle-matchmaking-btn" class="admin-btn">Alternar Matchmaking</button>
+                                <button type="button" id="toggle-daily-login-btn" class="admin-btn">Alternar Daily Login</button>
+                            </div>
+                            <div style="margin-top: 10px;">
+                                Status VIP: <span id="settings-vip-status">...</span> <br>
+                                Status Matchmaking: <span id="settings-matchmaking-status">...</span> <br>
+                                Status Daily: <span id="settings-daily-login-status">...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-set-updates" class="tab-content">
+                        <div class="admin-section">
+                            <h3>Agendar Evento ou Manutenção</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                Defina se será uma manutenção (derruba o servidor) ou um evento ao vivo (aplica mudanças sem desconectar).
+                            </p>
+                            <form id="create-update-form">
+                                <div class="form-grid form-grid-2col">
+                                    <div class="form-group">
+                                        <label>Título</label>
+                                        <input type="text" id="upd_title" placeholder="Ex: Patch v1.2 ou Evento XP">
+                                    </div>
+                                    <div class="form-group-checkbox" style="display:flex; align-items:center; height:100%; background: #2a2a2a; padding: 0 10px; border-radius: 4px; border: 1px solid #444;">
+                                        <input type="checkbox" id="upd_is_maintenance" checked style="width:20px; height:20px; accent-color: var(--accent-orange);">
+                                        <label for="upd_is_maintenance" style="margin-left:10px; font-weight:bold; color:var(--accent-orange); cursor:pointer;">
+                                            Modo Manutenção (Lockdown)
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-grid form-grid-2col">
+                                    <div class="form-group">
+                                        <label>Início (UTC)</label>
+                                        <input type="datetime-local" id="upd_start" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Fim (UTC)</label>
+                                        <input type="datetime-local" id="upd_end" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group" style="margin-top: 0.5rem;">
+                                    <label>Mensagem Global (Broadcast Automático)</label>
+                                    <input type="text" id="upd_broadcast" placeholder="Aviso que aparecerá no chat">
+                                </div>
+                                
+                                <div class="form-group" style="margin-top: 0.5rem;">
+                                    <label>Descrição (Interna)</label>
+                                    <textarea id="upd_desc" rows="2"></textarea>
+                                </div>
+                                
+                                <button type="submit" class="admin-btn">Criar Agendamento</button>
+                            </form>
+                        </div>
+                        <hr>
+                        <div class="admin-toolbar">
+                            <h3>Cronograma</h3>
+                            <button id="btn-refresh-updates" class="secondary-button">
+                                <i class="fa-solid fa-rotate"></i> Atualizar Lista
+                            </button>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Título</th>
+                                    <th>Início</th>
+                                    <th>Fim</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="updates-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px;">
+                        <button type="button" id="btn-open-schedule-settings" class="admin-btn secondary-button" style="box-shadow: 0 4px 12px rgba(0,0,0,0.5); padding: 15px 20px; font-size: 1rem;">
+                            <i class="fa-solid fa-calendar-plus"></i> Agendar Alterações
+                        </button>
+
+                        <button type="submit" class="admin-btn" style="box-shadow: 0 4px 12px rgba(0,0,0,0.5); padding: 15px 30px; font-size: 1.1rem;">
+                            <i class="fa-solid fa-save"></i> Salvar Agora (Ao Vivo)
+                        </button>
+                    </div>
+                </form>
+                
+                <form id="create-update-form" style="display:none;">
+                </form>
+
+            </section>
+
+            <section id="section-orders" class="admin-page">
+                <h2>Gerenciar Pedidos (Provas em Grupo)</h2>
+                
+                <div class="admin-section">
+                    <h3>Criar Nova Definição de Pedido</h3>
+                    <form id="create-order-form">
+                        <div class="form-group">
+                            <label for="order_name">Nome do Pedido (Ex: Jantar Vegano)</label>
+                            <input type="text" id="order_name" required>
+                        </div>
+                        
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="order_game_modes">Modos de Jogo (separados por vírgula)</label>
+                            <input type="text" id="order_game_modes" placeholder="ex: group_kitchen, solo_challenge">
+                        </div>
+                        
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="order_requirements">Requisitos (Formato JSON)</label>
+                            <textarea id="order_requirements" rows="4" placeholder='[{"tag": "vegan", "quantity": 2}, {"tag": "farm_food", "quantity": 1}]'></textarea>
+                        </div>
+                        <button type="submit" class="admin-btn">Salvar Pedido</button>
+                    </form>
+                </div>
+                
+                <hr>
+                
+                <h3>Lista de Pedidos Definidos</h3>
+                <button id="refresh-orders-btn" class="admin-btn">Atualizar Lista</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome do Pedido</th>
+                            <th>Modos de Jogo</th> 
+                            <th>Requisitos (JSON)</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-list-body">
+                        <tr><td colspan="5">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section id="section-game-modes" class="admin-page">
+                <h2>Gerenciar Modos de Jogo</h2>
+                
+                <div class="admin-section">
+                    <form id="create-game-mode-form">
+                        <h3 id="game-mode-form-title">Criar/Editar Modo de Jogo</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            A "Chave do Modo" (ex: 'solo_challenge') é o ID único usado pela API e pelo jogo.
+                        </p>
+                        
+                        <div class="form-grid" style="grid-template-columns: 1fr 2fr;">
+                                <div class="form-group">
+                                <label for="gm_mode_key">Chave do Modo (ID único)</label>
+                                <input type="text" id="gm_mode_key" required placeholder="ex: solo_challenge">
+                            </div>
+                            <div class="form-group">
+                                <label for="gm_display_name">Nome de Exibição (o que o jogador vê)</label>
+                                <input type="text" id="gm_display_name" required placeholder="ex: Desafio Solo">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="gm_description">Descrição</label>
+                            <input type="text" id="gm_description" placeholder="Uma breve descrição do modo de jogo.">
+                        </div>
+                        
+                        <h4 style="margin-top: 1.5rem;">Regras da Partida</h4>
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+                            <div class="form-group">
+                                <label for="gm_mode_type">Tipo (Categoria)</label>
+                                <select id="gm_mode_type">
+                                    <option value="casual">Casual</option>
+                                    <option value="chaotic">Caótico</option>
+                                    <option value="ranked">Ranqueado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="gm_duration">Duração (Segundos)</label>
+                                <input type="number" id="gm_duration" value="300" min="60" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="gm_max_players">Max. Jogadores</label>
+                                <input type="number" id="gm_max_players" value="1" min="1" required>
+                            </div>
+                            <div class="form-group form-group-checkbox">
+                                <input type="checkbox" id="gm_is_team_mode">
+                                <label for="gm_is_team_mode">É Modo de Equipe?</label>
+                            </div>
+                            <div class="form-group">
+                                <label for="gm_team_size">Tamanho da Equipe</label>
+                                <input type="number" id="gm_team_size" value="1" min="1" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="admin-btn">Salvar Modo de Jogo</button>
+                        <button type="button" id="cancel-edit-game-mode-btn" class="admin-btn secondary-button hidden">Cancelar Edição</button>
+                    </form>
+                </div>
+                
+                <hr>
+                
+                <h3>Lista de Modos de Jogo Definidos</h3>
+                <button id="refresh-game-modes-btn" class="admin-btn">Atualizar Lista</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Chave (ID)</th>
+                            <th>Nome de Exibição</th>
+                            <th>Tipo (Categoria)</th> 
+                            <th>Duração</th>
+                            <th>Max Jogadores</th>
+                            <th>Equipe?</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="game-modes-list-body">
+                        <tr><td colspan="7">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section id="section-levels" class="admin-page">
+                <h2>Gerenciar Níveis (Provas)</h2>
+                
+                <div class="admin-section">
+                    <form id="create-level-form">
+                        <h3 id="level-form-title">Criar/Editar Nível</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Defina as regras para cada cena/nível do jogo.
+                        </p>
+                        
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                                <div class="form-group">
+                                <label for="level_key">Chave do Nível (ID único da Cena/Asset)</label>
+                                <input type="text" id="level_key" required placeholder="ex: level_farm_scene">
+                            </div>
+                            <div class="form-group">
+                                <label for="level_display_name">Nome de Exibição (para Admin)</label>
+                                <input type="text" id="level_display_name" required placeholder="ex: Prova da Fazenda (Solo)">
+                            </div>
+                        </div>
+
+                        <h4 style="margin-top: 1.5rem;">Regras de Jogo</h4>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="level_game_modes">Modos de Jogo Permitidos (Chaves separadas por vírgula)</label>
+                            <input type="text" id="level_game_modes" placeholder="ex: solo_challenge, group_kitchen">
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="level_market_ids">IDs dos Ingredientes do Mercado (separados por vírgula)</label>
+                            <input type="text" id="level_market_ids" placeholder="ex: 10, 15, 22, 30, 45">
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="level_required_tags">Tags Obrigatórias da Prova (separadas por vírgula)</label>
+                            <input type="text" id="level_required_tags" placeholder="ex: vegan, farm_food">
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="level_judge_pool">IDs do Pool de Juízes (separados por vírgula)</label>
+                            <input type="text" id="level_judge_pool" placeholder="ex: 1, 3, 5 (vazio = todos)">
+                        </div>
+
+                        <button type="submit" class="admin-btn">Salvar Nível</button>
+                        <button type="button" id="cancel-edit-level-btn" class="admin-btn secondary-button hidden">Cancelar Edição</button>
+                    </form>
+                </div>
+                
+                <hr>
+                
+                <h3>Lista de Níveis Definidos</h3>
+                <button id="refresh-levels-btn" class="admin-btn">Atualizar Lista</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Chave (ID)</th>
+                            <th>Nome</th>
+                            <th>Modos Permitidos</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="levels-list-body">
+                        <tr><td colspan="4">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="section-transactions" class="admin-page">
+                <h2>Visualizador de Transações (Monetização)</h2>
+                <div class="admin-section">
+                    <h3>Buscar Transação</h3>
+                    <form id="search-transactions-form" class="form-grid form-grid-3col">
+                        <div class="form-group">
+                            <label for="search_user_id">Buscar por User ID</label>
+                            <input type="number" id="search_user_id">
+                        </div>
+                        <div class="form-group">
+                            <label for="search_username">Buscar por Username</label>
+                            <input type="text" id="search_username">
+                        </div>
+                        <div class="form-group">
+                            <label for="search_session_id">Buscar por Stripe Session ID</label>
+                            <input type="text" id="search_session_id">
+                        </div>
+                        <button type="submit" class="admin-btn secondary-button" style="align-self: end;">Buscar</button>
+                    </form>
+                </div>
+                <div class="admin-section">
+                    <h3>Resultados da Busca (Últimos 100)</h3>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Data</th>
+                                    <th>User ID / Nome</th>
+                                    <th>Produto</th>
+                                    <th>Valor (Centavos)</th>
+                                    <th>Status</th>
+                                    <th>Sessão Stripe</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-list-body">
+                                <tr><td colspan="7">Use a busca para encontrar transações.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-servers" class="admin-page">
+                <h2>Monitor de Servidores Ativos</h2>
+                <div class="admin-section">
+                    <button id="refresh-servers-btn" class="admin-btn secondary-button">Atualizar Lista</button>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 1rem;">
+                        Mostrando servidores que enviaram heartbeat nos últimos 2 minutos.
+                    </p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID do Servidor</th>
+                                <th>IP:Porta</th>
+                                <th>Região</th>
+                                <th>Status</th>
+                                <th>Jogadores</th>
+                                <th>Mapa Atual</th>
+                                <th>Último Heartbeat</th>
+                            </tr>
+                        </thead>
+                        <tbody id="servers-list-body">
+                            <tr><td colspan="7">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="section-tickets" class="admin-page">
+                <h2>Tickets de Suporte (Unificado)</h2>
+                
+                <div class="admin-section">
+                    <div class="form-grid" style="grid-template-columns: 1fr 1fr auto;">
+                        <div class="form-group">
+                            <label for="ticket-status-filter">Filtrar Status (Ambos os Sistemas)</label>
+                            <select id="ticket-status-filter">
+                                <option value="open">Abertos</option>
+                                <option value="claimed">Reivindicados (Discord)</option>
+                                <option value="user_reply">Respondido (Web)</option>
+                                <option value="admin_reply">Respondido (Admin)</option>
+                                <option value="closed">Fechados</option>
+                                <option value="all">Todos</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="ticket-category-filter">Filtrar Categoria (Web)</label>
+                            <select id="ticket-category-filter">
+                                <option value="">Todos</option>
+                                <option value="support_technical">Técnico / Bug</option>
+                                <option value="support_payment">Pagamento / Compra</option>
+                                <option value="support_moderation">Denúncia / Moderação</option>
+                            </select>
+                        </div>
+                        <button id="refresh-tickets-btn" class="admin-btn secondary-button" style="align-self: end;">Atualizar Listas</button>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Tickets do Discord</h3>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Data Abertura</th>
+                                    <th>Usuário Discord</th>
+                                    <th>Tipo</th>
+                                    <th>Status</th>
+                                    <th>Atendido Por</th>
+                                    <th>Canal ID</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tickets-list-body">
+                                <tr><td colspan="7">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Tickets da Web</h3>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Última Atualização</th>
+                                    <th>Usuário (Jogo)</th>
+                                    <th>Assunto</th>
+                                    <th>Categoria</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="web-tickets-list-body"> 
+                                <tr><td colspan="7">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div id="web-ticket-modal" class="modal hidden" style="z-index: 1003;">
+                    <div class="modal-overlay"></div>
+                    <div class="modal-container" style="max-width: 700px;">
+                        <button class="modal-close-btn">&times;</button>
+                        <h2 id="web-ticket-modal-title">Ticket ID: ...</h2>
+                        <div class="admin-section" style="max-height: 400px; overflow-y: auto; background: #222;" id="web-ticket-messages-view">
+                            </div>
+                        <form id="web-ticket-reply-form" style="margin-top: 1rem;">
+                            <input type="hidden" id="reply-ticket-id">
+                            <div class="form-group">
+                                <label for="web-ticket-reply-message">Sua Resposta</label>
+                                <textarea id="web-ticket-reply-message" rows="4" required></textarea>
+                            </div>
+                            
+                            <div class="form-grid form-grid-2col" style="align-items: center; gap: 1rem;">
+                                <button type="submit" class="admin-btn">Enviar Resposta</button>
+                                <button type="button" id="web-ticket-close-btn" class="admin-btn delete-btn">
+                                    Fechar Ticket (Concluído)
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-mailbox" class="admin-page">
+                <h2>Correio do Jogador (Mailbox)</h2>
+                <div class="admin-section">
+                    <h3>Enviar Novo Correio</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                        Envia uma mensagem (e recompensas opcionais) para a caixa de correio de um jogador dentro do jogo.
+                    </p>
+                    <form id="send-mail-form">
+                        <div class="form-grid form-grid-2col">
+                            <div class="form-group">
+                                <label for="mail_username">Username do Jogador (Exato)</label>
+                                <input type="text" id="mail_username" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="mail_subject">Assunto</label>
+                                <input type="text" id="mail_subject" required>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="mail_message">Mensagem (Opcional)</label>
+                            <textarea id="mail_message" rows="3"></textarea>
+                        </div>
+                        <h4 style="margin-top: 1.5rem;">Recompensas (Opcional)</h4>
+                        <div class="form-grid form-grid-3col">
+                            <div class="form-group">
+                                <label for="mail_reward_currency">Moedas (Normal)</label>
+                                <input type="number" id="mail_reward_currency" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="mail_reward_premium">Cash (Premium)</label>
+                                <input type="number" id="mail_reward_premium" value="0" min="0">
+                            </div>
+                        </div>
+                        <div class="form-grid form-grid-2col" style="margin-top: 1rem;">
+                            <div class="form-group">
+                                <label for="mail_reward_item_id">Item ID (Opcional)</label>
+                                <input type="number" id="mail_reward_item_id" min="0" placeholder="ID do item">
+                            </div>
+                            <div class="form-group">
+                                <label for="mail_reward_item_quantity">Quantidade do Item</label>
+                                <input type="number" id="mail_reward_item_quantity" value="0" min="0">
+                            </div>
+                        </div>
+                        <button type="submit" class="admin-btn">Enviar Correio</button>
+                    </form>
+                </div>
+                <hr>
+
+                <div class="admin-section" style="border-color: var(--accent-orange);">
+                    <h3>Enviar Correio em Massa</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                        Envia uma mensagem para um grande grupo de jogadores (ex: compensação por instabilidade).
+                    </p>
+                    <form id="send-mass-mail-form">
+                        <div class="form-grid form-grid-3col"> <div class="form-group">
+                                <label for="mass_mail_target">Enviar Para (Destinatário)</label>
+                                <select id="mass_mail_target" required>
+                                    <option value="">-- Selecione um grupo --</option>
+                                    <option value="all">Todos os Jogadores (Verificados)</option>
+                                    <option value="vips">Apenas VIPs Ativos</option>
+                                    <option value="active_7d">Jogadores Ativos (Últimos 7 dias)</option>
+                                    <option value="has_item_id">Possui Item (usar ID no Parâmetro)</option>
+                                    <option value="bought_product_name">Comprou Produto (usar Nome no Parâmetro)</option>
+                                    <option value="bp_level_min">Nível Mínimo BP (usar Nível no Parâmetro)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="mass_mail_target_param">Parâmetro (Opcional)</label>
+                                <input type="text" id="mass_mail_target_param" placeholder="Ex: 50 ou 'Passe Master'">
+                            </div>
+                            <div class="form-group">
+                                <label for="mass_mail_subject">Assunto</label>
+                                <input type="text" id="mass_mail_subject" required>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="mass_mail_message">Mensagem (Opcional)</label>
+                            <textarea id="mass_mail_message" rows="3"></textarea>
+                        </div>
+                        <h4 style="margin-top: 1.5rem;">Recompensas (Opcional)</h4>
+                        <div class="form-grid form-grid-3col">
+                            <div class="form-group">
+                                <label for="mass_mail_reward_currency">Moedas (Normal)</label>
+                                <input type="number" id="mass_mail_reward_currency" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="mass_mail_reward_premium">Cash (Premium)</label>
+                                <input type="number" id="mass_mail_reward_premium" value="0" min="0">
+                            </div>
+                        </div>
+                        <div class="form-grid form-grid-2col" style="margin-top: 1rem;">
+                            <div class="form-group">
+                                <label for="mass_mail_reward_item_id">Item ID (Opcional)</label>
+                                <input type="number" id="mass_mail_reward_item_id" min="0" placeholder="ID do item">
+                            </div>
+                            <div class="form-group">
+                                <label for="mass_mail_reward_item_quantity">Quantidade do Item</label>
+                                <input type="number" id="mass_mail_reward_item_quantity" value="0" min="0">
+                            </div>
+                        </div>
+                        <button type="submit" class="admin-btn secondary-button">Enviar Correio em Massa</button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="section-api_keys" class="admin-page">
+                <h2>Gerenciador de Chaves de API</h2>
+                <div class="admin-section">
+                    <button id="refresh-api-keys-btn" class="admin-btn secondary-button">Atualizar Lista</button>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 1rem;">
+                        Novas chaves só podem ser geradas via servidor (ex: `managekeys.py`).
+                    </p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Preview Hash</th>
+                                <th>Usuário Associado</th>
+                                <th>Status</th>
+                                <th>Permissões</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="api-keys-list-body">
+                            <tr><td colspan="6">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="section-analytics" class="admin-page">
+                <h2>Analytics</h2>
+                <div class="admin-section">
+                    <form id="analytics-filter-form">
+                        <h3 style="margin-top: 0;">Filtrar Analytics</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: -0.5rem; margin-bottom: 1rem;">
+                            Deixe as datas em branco para ver o histórico total ("All-Time").
+                        </p>
+                        <div class="form-grid form-grid-3col" style="align-items: flex-end;">
+                            <div class="form-group">
+                                <label for="analytics_start_time">Data Início</label>
+                                <input type="datetime-local" id="analytics_start_time">
+                            </div>
+                            <div class="form-group">
+                                <label for="analytics_end_time">Data Fim</label>
+                                <input type="datetime-local" id="analytics_end_time">
+                            </div>
+                            <button type="submit" id="refresh-analytics-btn" class="admin-btn secondary-button">Atualizar Dados</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="admin-section" style="border-color: var(--success-color);">
+                    <h3>Resumo da Receita (Filtro Aplicado)</h3>
+                    <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); text-align: center;">
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Receita Total</h3>
+                            <div id="analytics-total-revenue" style="font-size: 2.5rem; font-weight: bold; color: var(--success-color);">...</div>
+                            <small>(em centavos)</small>
+                        </div>
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Total de Vendas</h3>
+                            <div id="analytics-total-sales" style="font-size: 2.5rem; font-weight: bold; color: var(--accent-steel-blue);">...</div>
+                        </div>
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Ticket Médio</h3>
+                            <div id="analytics-avg-sale" style="font-size: 2.5rem; font-weight: bold; color: var(--text-primary);">...</div>
+                            <small>(em centavos)</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-grid form-grid-2col">
+                    <div class="admin-section">
+                        <h3>Fontes de Moeda (Ganhos)</h3>
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Fonte (Origem)</th>
+                                        <th>Tipo (Moeda/Cash)</th>
+                                        <th>Total Ganho</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="analytics-economy-sources-body">
+                                    <tr><td colspan="3">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h3>Drenos de Moeda (Gastos)</h3>
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Fonte (Gasto)</th>
+                                        <th>Tipo (Moeda/Cash)</th>
+                                        <th>Total Gasto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="analytics-economy-sinks-body">
+                                    <tr><td colspan="3">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Visão Geral dos Usuários e Economia</h3>
+                    <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); text-align: center;">
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Usuários Totais</h3>
+                            <div id="analytics-total-users" style="font-size: 2.5rem; font-weight: bold; color: var(--accent-steel-blue);">...</div>
+                        </div>
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Verificados</h3>
+                            <div id="analytics-verified-users" style="font-size: 2.5rem; font-weight: bold; color: var(--success-color);">...</div>
+                        </div>
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Banidos</h3>
+                            <div id="analytics-banned-users" style="font-size: 2.5rem; font-weight: bold; color: var(--error-color);">...</div>
+                        </div>
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Moedas (Total)</h3>
+                            <div id="analytics-total-currency" style="font-size: 2.5rem; font-weight: bold; color: var(--text-primary);">...</div>
+                        </div>
+                        <div style="background: #333; padding: 1rem; border-radius: 8px;">
+                            <h3 style="margin: 0; color: var(--text-secondary);">Cash (Total)</h3>
+                            <div id="analytics-total-premium" style="font-size: 2.5rem; font-weight: bold; color: var(--text-primary);">...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-grid form-grid-2col">
+                    <div class="admin-section">
+                        <h3>Estatísticas de Monetização (Top 20)</h3>
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th>Nº de Vendas</th>
+                                        <th>Receita (Centavos)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="analytics-monetization-body">
+                                    <tr><td colspan="3">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h3>Modos de Jogo Populares (Top 20)</h3>
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Modo de Jogo (match_type)</th>
+                                        <th>Partidas Jogadas</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="analytics-gamemodes-body">
+                                    <tr><td colspan="2">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-featured" class="admin-page">
+                <h2>Gerenciar Loja Destaque</h2>
+
+                <div class="admin-section">
+                    <form id="create-featured-slot-form">
+                        <h3>Criar Novo Slot de Destaque</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            Crie os "espaços" da loja (ex: "Destaque Diário 1", "Semanal"). Você definirá os itens na tabela abaixo.
+                        </p>
+                        <div class="form-grid form-grid-3col" style="align-items: flex-end;">
+                            <div class="form-group">
+                                <label for="slot_key">Chave (ID Único)</label>
+                                <input type="text" id="slot_key" required placeholder="ex: daily_1, weekly_main">
+                            </div>
+                            <div class="form-group">
+                                <label for="slot_display_name">Nome de Exibição</label>
+                                <input type="text" id="slot_display_name" required placeholder="ex: Destaque Diário 1">
+                            </div>
+                            <button type="submit" class="admin-btn">Criar Slot</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Slots de Destaque Atuais</h3>
+                    <button id="refresh-featured-btn" class="admin-btn secondary-button">Atualizar Lista</button>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome (Chave)</th>
+                                <th>Item Atual (ID)</th>
+                                <th>Expira Em</th>
+                                <th>Preço Normal (Override)</th>
+                                <th>Preço Cash (Override)</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="featured-items-list-body">
+                            <tr><td colspan="7">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <div id="set-featured-item-modal" class="modal hidden" style="z-index: 1003;">
+                <div class="modal-overlay" data-modal-close="set-featured-item-modal"></div>
+                <div class="modal-container" style="max-width: 600px;">
+                    <button class="modal-close-btn" data-modal-close="set-featured-item-modal">&times;</button>
+                    <h2 id="set-featured-item-title">Definir Item para Slot: ...</h2>
+                    <form id="set-featured-item-form">
+                        <input type="hidden" id="edit_slot_key">
+                        <input type="hidden" id="edit_slot_display_name">
+
+                        <div class="form-group">
+                            <label for="edit_item_id">Item ID</label>
+                            <input type="number" id="edit_item_id" placeholder="ID do item da tabela 'items'">
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label for="edit_expires_at">Data de Expiração (Deixe em branco para não expirar)</label>
+                            <input type="datetime-local" id="edit_expires_at">
+                        </div>
+
+                        <h4 style="margin-top: 1.5rem;">Preço de Destaque (Opcional)</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: -0.5rem; margin-bottom: 1rem;">
+                            Deixe em branco para usar o preço padrão (ou com desconto) do item.
+                        </p>
+                        <div class="form-grid form-grid-2col">
+                            <div class="form-group">
+                                <label for="edit_override_price_normal">Preço (Moedas)</label>
+                                <input type="number" id="edit_override_price_normal" placeholder="Ex: 500 (Substitui o preço)">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit_override_price_premium">Preço (Cash)</label>
+                                <input type="number" id="edit_override_price_premium" placeholder="Ex: 100 (Substitui o preço)">
+                            </div>
+                        </div>
+
+                        <div class="form-group-checkbox" style="margin-top: 1.5rem;">
+                            <input type="checkbox" id="edit_is_active" checked>
+                            <label for="edit_is_active">Slot Ativo?</label>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 1.5rem;">
+                            <button type="submit" class="admin-btn">Salvar Agora</button>
+                            <button type="button" id="btn-schedule-featured" class="admin-btn secondary-button">
+                                <i class="fa-solid fa-clock"></i> Agendar Rotação
+                            </button>
+                        </div>
+                    </form>
+
+                        <button type="submit" class="admin-btn" style="margin-top: 1.5rem;">Salvar Alterações</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="edit-api-key-modal" class="modal hidden" style="z-index: 1003;">
+                <div class="modal-overlay" data-modal-close="edit-api-key-modal"></div>
+                <div class="modal-container" style="max-width: 600px;">
+                    <button class="modal-close-btn" data-modal-close="edit-api-key-modal">&times;</button>
+                    <h2 id="edit-api-key-title">Editar Chave ID: ...</h2>
+                    <form id="edit-api-key-form">
+                        <input type="hidden" id="edit-key-id">
+                        <div class="form-group">
+                            <label for="edit_key_permissions">Permissões (JSON)</label>
+                            <textarea id="edit_key_permissions" rows="8" required></textarea>
+                        </div>
+                        <button type="submit" class="admin-btn">Salvar Permissões</button>
+                    </form>
+                </div>
+            </div>
+            
+            <section id="section-moderation" class="admin-page">
+                <h2>Fila de Moderação (Denúncias de Jogadores)</h2>
+                <div class="admin-section">
+                    <div class="form-grid" style="grid-template-columns: 1fr auto auto;">
+                        <div class="form-group">
+                            <label for="report-status-filter">Filtrar Status</label>
+                            <select id="report-status-filter">
+                                <option value="pending">Pendentes</option>
+                                <option value="resolved">Resolvidas</option>
+                                <option value="ignored">Ignoradas</option>
+                            </select>
+                        </div>
+                        <button id="refresh-reports-btn" class="admin-btn secondary-button" style="align-self: end;">Atualizar Fila</button>
+                    </div>
+                </div>
+                <div class="admin-section">
+                    <h3>Pesquisar Logs de Chat</h3>
+                    <form id="search-chat-logs-form">
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 2fr auto; align-items: flex-end;">
+                            <div class="form-group">
+                                <label for="search_chat_user_id">User ID</label>
+                                <input type="number" id="search_chat_user_id" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="search_chat_username">Username</label>
+                                <input type="text" id="search_chat_username">
+                            </div>
+                            <div class="form-group">
+                                <label for="search_chat_match_id">Match ID</label>
+                                <input type="text" id="search_chat_match_id">
+                            </div>
+                            <div class="form-group">
+                                <label for="search_chat_message">Conteúdo da Mensagem</label>
+                                <input type="text" id="search_chat_message">
+                            </div>
+                            <button type="submit" class="admin-btn secondary-button">Buscar Logs</button>
+                        </div>
+                    </form>
+                    <hr>
+                    <h3>Resultados da Pesquisa de Chat (Últimos 100)</h3>
+                    <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Quando</th>
+                                    <th>Usuário</th>
+                                    <th>Match ID</th>
+                                    <th>Mensagem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="chat-logs-result-body">
+                                <tr><td colspan="4">Use a busca acima para encontrar logs.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="admin-section">
+                    <h3>Denúncias Pendentes</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Data</th>
+                                <th>Denunciante</th>
+                                <th>Denunciado</th>
+                                <th>Motivo</th>
+                                <th>Nota</th>
+                                <th>Partida ID</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="moderation-list-body">
+                            <tr><td colspan="8">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="section-daily_rewards" class="admin-page">
+                <h2>Gerenciar Recompensas Diárias</h2>
+                    <div class="admin-section" style="border-color: var(--error-color);">
+                        <h3>Controles de Manutenção</h3>
+                        <div class="form-grid form-grid-3col" style="align-items: center;">
+                            <div>
+                                Status Atual: <strong id="settings-daily-login-status">Carregando...</strong>
+                            </div>
+                            <button id="toggle-daily-login-btn" class="admin-btn">Carregando...</button>
+                            <button id="reset-daily-login-btn" class="admin-btn delete-btn">Resetar Progresso (Todos)</button>
+                        </div>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 1rem;">
+                            <strong>Resetar Progresso:</strong> Zera o progresso de login de TODOS os jogadores, forçando-os a começar do Dia 1. Use ao trocar o calendário mensal.
+                        </p>
+                    </div>
+                <div class="admin-section">
+                    <form id="create-daily-reward-form">
+                        <h3>Definir Recompensa do Dia</h3>
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr auto; align-items: flex-end;">
+                            <div class="form-group">
+                                <label for="reward_day_number">Dia</label>
+                                <input type="number" id="reward_day_number" min="1" max="365" required placeholder="Ex: 1">
+                            </div>
+                            <div class="form-group">
+                                <label for="reward_currency_normal">Moedas</label>
+                                <input type="number" id="reward_currency_normal" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="reward_currency_premium">Cash</label>
+                                <input type="number" id="reward_currency_premium" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="reward_item_id">Item ID (Opcional)</label>
+                                <input type="number" id="reward_item_id" min="0" placeholder="ID do item">
+                            </div>
+                            <button type="submit" class="admin-btn">Salvar Dia</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Calendário de Recompensas</h3>
+                    <button id="refresh-daily-rewards-btn" class="admin-btn secondary-button">Atualizar Calendário</button>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Dia</th>
+                                <th>Recompensa (Moedas)</th>
+                                <th>Recompensa (Cash)</th>
+                                <th>Recompensa (Item)</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daily-rewards-list-body">
+                            <tr><td colspan="5">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <section id="section-alerts" class="admin-page">
+                <h2>Alertas de Atividade Suspeita (Proativo)</h2>
+                <div class="admin-section">
+                    <button id="refresh-alerts-btn" class="admin-btn secondary-button">Atualizar Lista</button>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 1rem;">
+                        Exibe logs automáticos de atividades que podem indicar abuso ou trapaça (ex: concessão de moedas em valores extremos).
+                    </p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Quando</th>
+                                <th>Usuário</th>
+                                <th>Tipo de Alerta</th>
+                                <th>Detalhes (JSON)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-list-body">
+                            <tr><td colspan="4">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+        </main>
+    </div>
+
+    <div id="user-details-modal" class="modal hidden" style="z-index: 1002;">
+        <div class="modal-overlay" data-modal-close="user-details-modal"></div>
+        <div class="modal-container" style="max-width: 800px; background: #2a2a2a; border-color: var(--accent-steel-blue);">
+            <button class="modal-close-btn" data-modal-close="user-details-modal">&times;</button>
+            <h2 id="user-details-title">Detalhes: ...</h2>
+
+            <div id="user-details-loading">
+                <p>Carregando todos os dados do usuário...</p>
+            </div>
+
+            <div id="user-details-content" class="hidden">
+                <div class="form-grid form-grid-2col">
+                    <div class="admin-section" style="padding: 1rem;">
+                        <h3>Stats & MMR</h3>
+                        <form id="edit-user-stats-form">
+                            <input type="hidden" id="edit-stats-user-id">
+                            <div class="form-group">
+                                <label for="edit-user-score">Pontuação Total (Score)</label>
+                                <input type="number" id="edit-user-score" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-user-mmr">MMR (Ranking)</label>
+                                <input type="number" id="edit-user-mmr" required>
+                            </div>
+                            <button type="submit" class="admin-btn" style="margin-top: 1rem;">Salvar Stats</button>
+                        </form>
+                        <hr>
+                        <h3 style="margin-top: 1.5rem;">Gerenciar Inventário</h3>
+                        <form id="edit-user-inventory-form">
+                            <input type="hidden" id="edit-inv-user-id">
+                            <input type="hidden" id="edit-inv-username"> <div class="form-group">
+                                <label for="edit-inv-item-id">Item ID</label>
+                                <input type="number" id="edit-inv-item-id" placeholder="ID do item" required>
+                            </div>
+                            <div class="form-group" style="margin-top: 0.5rem;">
+                                <label for="edit-inv-quantity">Nova Quantidade (0 para remover)</label>
+                                <input type="number" id="edit-inv-quantity" min="0" value="1" required>
+                            </div>
+                            <button type="submit" class="admin-btn secondary-button" style="margin-top: 1rem;">Salvar Item (Inventário)</button>
+                        </form>
+                        <hr>
+                        <pre id="user-details-stats" class="user-details-pre" style="max-height: 200px; overflow-y: auto;">Carregando...</pre>
+                    </div>
+
+                    <div class="admin-section" style="padding: 1rem; border-color: var(--error-color);">
+                        <h3>Zona de Perigo</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary);">Ações irreversíveis.</p>
+                        <button type="button" id="wipe-inventory-btn" class="admin-btn delete-btn" style="width: 100%; margin-top: 0.5rem;">Zerar Inventário</button>
+                        <button type="button" id="wipe-stats-btn" class="admin-btn delete-btn" style="width: 100%; margin-top: 0.5rem;">Zerar Stats (Score/MMR)</button>
+                        <button type="button" id="wipe-battlepass-btn" class="admin-btn delete-btn" style="width: 100%; margin-top: 0.5rem;">Zerar Progresso (BattlePass)</button>
+                    </div>
+                </div>
+
+                <div class="admin-section" style="padding: 1rem; margin-top: 1rem;">
+                    <h3>Dados Brutos (JSON)</h3>
+                    <div class="form-grid form-grid-2col">
+                        <div>
+                            <h4>Inventário</h4>
+                            <pre id="user-details-inventory" class="user-details-pre" style="max-height: 250px; overflow-y: auto;">...</pre>
+                        </div>
+                        <div>
+                            <h4>Equipamento</h4>
+                            <pre id="user-details-equipment" class="user-details-pre" style="max-height: 250px; overflow-y: auto;">...</pre>
+                        </div>
+                        <div>
+                            <h4>Status BattlePass</h4>
+                            <pre id="user-details-battlepass" class="user-details-pre" style="max-height: 250px; overflow-y: auto;">...</pre>
+                        </div>
+                        <div>
+                            <h4>Social (Amigos/Bloq.)</h4>
+                            <pre id="user-details-social" class="user-details-pre" style="max-height: 250px; overflow-y: auto;">...</pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="admin-section" style="padding: 1rem; margin-top: 1rem;">
+                    <h3>Logs de Chat Recentes (Últimos 50)</h3>
+                    <pre id="user-details-chatlog" class="user-details-pre" style="max-height: 300px; overflow-y: auto;">Carregando logs de chat...</pre>
+                </div>
+                <div class="admin-section" style="padding: 1rem; margin-top: 1rem; border: 1px solid var(--accent-orange);">
+                    <h3 style="color: var(--accent-orange);">🛡️ Histórico de Segurança & IPs</h3>
+                    <div id="user-details-security" class="user-details-pre" style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9rem;">
+                        Carregando logs de segurança...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="schedule-selector-modal" class="modal hidden" style="z-index: 2000;">
+        <div class="modal-overlay" data-modal-close="schedule-selector-modal"></div>
+        <div class="modal-container" style="max-width: 500px;">
+            <button class="modal-close-btn" data-modal-close="schedule-selector-modal">&times;</button>
+            <h2 style="color: var(--accent-orange);">Agendar para qual Manutenção?</h2>
+            <p class="modal-instruction">Selecione uma atualização pendente. As configurações atuais da tela substituirão quaisquer configurações salvas anteriormente nesta manutenção.</p>
+            
+            <div class="form-group">
+                <label>Atualizações Pendentes</label>
+                <select id="schedule-target-select" style="width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: white;">
+                    <option value="">Carregando...</option>
+                </select>
+            </div>
+
+            <div class="form-grid form-grid-2col" style="margin-top: 1.5rem;">
+                <button id="btn-confirm-schedule" class="admin-btn">Confirmar Agendamento</button>
+                <button class="admin-btn secondary-button" data-modal-close="schedule-selector-modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-user-modal" class="modal hidden" style="z-index: 1001;">
+        <div class="modal-overlay" data-modal-close="edit-user-modal"></div>
+        <div class="modal-container" style="max-width: 500px; background: #333; border-color: var(--accent-orange);">
+            <button class="modal-close-btn" data-modal-close="edit-user-modal">&times;</button>
+            <h2 id="edit-user-title">Editar Usuário</h2>
+            <form id="edit-user-form">
+                <input type="hidden" id="edit-user-id">
+                <div class="form-group">
+                    <label for="edit-user-email">Novo Email</label>
+                    <input type="email" id="edit-user-email" required>
+                </div>
+                <button type="submit" class="admin-btn">Salvar Novo Email</button>
+                <button type="button" id="cancel-edit-user-btn" class="admin-btn secondary-button">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin.js" defer></script>
+    
+</body>
+</html>

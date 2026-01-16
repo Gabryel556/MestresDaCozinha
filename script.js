@@ -201,6 +201,33 @@ async function decryptDataWithPass(encryptedBundle, password) {
     }
 }
 
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    // 'Secure' garante que só trafegue em HTTPS/Localhost
+    // 'SameSite=Strict' protege contra CSRF
+    document.cookie = name + "=" + (value || "") + expires + "; path=/; Secure; SameSite=Strict";
+}
+
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for(let i=0;i < ca.length;i++) {
+        let c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+}
+
+function eraseCookie(name) {   
+    document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+}
+
 function generateLocalMasterKey() {
     const array = new Uint8Array(32);
     window.crypto.getRandomValues(array);
@@ -388,8 +415,8 @@ async function fetchAndCacheKeys() {
         if (res.ok) {
             const data = await res.json();
             
-            localStorage.setItem("pgp_public_key", data.public_key);
-            localStorage.setItem("pgp_private_key", data.encrypted_private_key);
+            setCookie("pgp_public_key", data.public_key, 30);
+            setCookie("pgp_private_key", data.encrypted_private_key, 30);
             
             await tryUnlockKey();
         } 
@@ -399,8 +426,8 @@ async function fetchAndCacheKeys() {
 }
 
 async function tryUnlockKey() {
-    const armoredKey = localStorage.getItem("pgp_private_key");
-    const masterKey = localStorage.getItem("local_master_key");
+    const armoredKey = getCookie("pgp_private_key");
+    const masterKey = getCookie("local_master_key");
 
     if (armoredKey && masterKey) {
         try {
@@ -1273,7 +1300,10 @@ async function handleGoogleCallback() {
 async function finalizeGoogleRegistration(e) {
     e.preventDefault();
     const tempToken = sessionStorage.getItem("temp_google_token");
-    if (!tempToken) { alert("Sessão expirada."); return; }
+    if (!tempToken) { 
+        alert("Sessão expirada."); 
+        return; 
+    }
 
     const data = {
         username: document.getElementById('g-username').value,
@@ -1502,13 +1532,16 @@ async function handleInviteMemberToTeam(e) {
 }
 
 async function encryptMessage(text, roomId) {
-    if (!myPublicKeyStr) myPublicKeyStr = localStorage.getItem("pgp_public_key");
+    // 1. Busca chave pública nos Cookies se não estiver na memória
+    if (!myPublicKeyStr) myPublicKeyStr = getCookie("pgp_public_key");
     
+    // 2. Validação: Se não tiver chave pública, avisa o usuário
     if (!myPublicKeyStr) {
         if(localStorage.getItem("jwt_token")) {
-            console.warn("Chave pública do remetente não encontrada. O usuário deve gerar chaves.");
+            console.warn("Chave pública do remetente não encontrada nos Cookies.");
             alert("Aviso: Gere suas chaves de segurança no perfil para começar a criptografar.");
         }
+        // Se o chat não for privado, envia texto plano. Se for privado, bloqueia.
         if (currentChatType !== 'private') return text;
         return null; 
     }
@@ -1518,24 +1551,27 @@ async function encryptMessage(text, roomId) {
     try {
         if (currentChatType === 'private') {
             
+            // Valida destinatário
             if (!window.currentChatTargetId) {
                  console.warn("ID do destinatário desconhecido. Não é possível encriptar.");
                  return null;
             }
 
+            // Busca chave do destinatário (Cache ou API)
             const targetKeyArmored = await getTargetPublicKey(window.currentChatTargetId);
             if (!targetKeyArmored) {
                 alert("Erro E2EE: A chave pública do destinatário está ausente no servidor.");
                 return null;
             }
 
+            // Prepara as chaves para encriptação
             const publicKeys = [
-                await openpgp.readKey({ armoredKey: targetKeyArmored }),
-                await openpgp.readKey({ armoredKey: myPublicKeyStr })
+                await openpgp.readKey({ armoredKey: targetKeyArmored }), // Chave DELE
+                await openpgp.readKey({ armoredKey: myPublicKeyStr })    // MINHA chave (para eu ler depois)
             ];
             
+            // --- MODO CBC (PGP Padrão) ---
             if (mode === 'cbc') {
-                
                 console.log(`🛡️ MODO PADRÃO (PGP/CBC) selecionado.`);
                 
                 const message = await openpgp.createMessage({ text: text });
@@ -1545,43 +1581,65 @@ async function encryptMessage(text, roomId) {
                     encryptionKeys: publicKeys 
                 });
                 
-                return encrypted;
+                // LOG NO CONSOLE (Para demonstração)
+                console.group("🔒 SAÍDA CRIPTOGRAFADA (CBC/PGP)");
+                console.log("Texto Original:", text);
+                console.log("Ciphertext (Bloco PGP):", encrypted);
+                console.groupEnd();
                 
+                return encrypted;
             } 
             
+            // --- MODO CTR (Híbrido AES+PGP) ---
             else if (mode === 'ctr') {
-                
+                console.log(`⚡ MODO RÁPIDO (CTR/Híbrido) selecionado.`);
+
+                // 1. Gera chave efêmera AES-256
                 const aesKey = await window.crypto.subtle.generateKey(
                     { name: "AES-CTR", length: 256 }, true, ["encrypt", "decrypt"]
                 );
                 
+                // 2. Encripta o texto com AES-CTR (Rápido)
                 const aesResult = await aesCtrEncrypt(text, aesKey);
                 
+                // 3. Exporta a chave AES para enviar
                 const aesKeyExported = await window.crypto.subtle.exportKey("raw", aesKey);
                 const aesKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(aesKeyExported)));
                 
+                // 4. Cria o pacote da chave (Chave + IV)
                 const keyTransportMessage = JSON.stringify({ 
                     key: aesKeyBase64, 
                     iv: aesResult.iv 
                 });
 
+                // 5. Encripta o pacote da chave com PGP (Seguro)
                 const pgpKeyEnvelope = await openpgp.encrypt({
                     message: await openpgp.createMessage({ text: keyTransportMessage }),
                     encryptionKeys: publicKeys
                 });
 
-                console.log(`⚡ MODO RÁPIDO (CTR/Híbrido) selecionado.`);
-                return JSON.stringify({
+                // 6. Monta o pacote final
+                const finalPayload = JSON.stringify({
                     mode: 'CTR',
                     envelope: pgpKeyEnvelope, 
                     content: aesResult.ciphertext 
                 });
+
+                // LOG NO CONSOLE (Para demonstração)
+                console.group("⚡ SAÍDA CRIPTOGRAFADA (CTR/AES)");
+                console.log("Texto Original:", text);
+                console.log("IV (Base64):", aesResult.iv);
+                console.log("Ciphertext (AES-256-CTR):", aesResult.ciphertext);
+                console.log("Envelope de Chave (PGP):", pgpKeyEnvelope);
+                console.groupEnd();
+
+                return finalPayload;
             }
 
             throw new Error("Modo de cifra inválido."); 
         } 
         
-        return text; 
+        return text; // Retorna texto normal se não for chat privado
 
     } catch (error) {
         console.error("Erro na encriptação:", error); 
@@ -1955,11 +2013,20 @@ async function handleSendChatMessage(e) {
 
 async function initializeChatCrypto() {
     const success = await tryUnlockKey();
+    
     if (success) {
+        console.log("Sistema de Criptografia Inicializado.");
         connectChatWebSocket();
     } else {
         if (localStorage.getItem("jwt_token")) {
-            console.warn("Chat não pode ser desbloqueado automaticamente (Falta MasterKey).");
+            const hasKeyCookie = getCookie("pgp_private_key");
+            
+            if (hasKeyCookie) {
+                console.warn("Chat seguro detectado, mas chave bloqueada. Solicitando senha...");
+                openModal('pgp-unlock-modal');
+            } else {
+                console.warn("Nenhuma chave de criptografia encontrada. O chat funcionará, mas mensagens seguras estarão ilegíveis.");
+            }
         }
     }
 }

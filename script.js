@@ -208,9 +208,15 @@ function setCookie(name, value, days) {
         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
         expires = "; expires=" + date.toUTCString();
     }
-    // 'Secure' garante que só trafegue em HTTPS/Localhost
-    // 'SameSite=Strict' protege contra CSRF
-    document.cookie = name + "=" + (value || "") + expires + "; path=/; Secure; SameSite=Strict";
+    const isSecure = window.location.protocol === 'https:';
+    let cookieString = `${name}=${value || ""}${expires}; path=/; SameSite=Lax`;
+    
+    if (isSecure) {
+        cookieString += "; Secure";
+    }
+
+    document.cookie = cookieString;
+    console.log(`🍪 Cookie gravado: ${name} (SSL: ${isSecure})`);
 }
 
 function getCookie(name) {
@@ -236,7 +242,7 @@ function generateLocalMasterKey() {
 
 async function performLogin(username, password) {
     try {
-        console.log("Chamando API /website/login...")
+        console.log("🚀 Iniciando Login...");
         const response = await apiFetch(`/website/login`, {
             method: "POST",
             body: JSON.stringify({ username, password })
@@ -244,43 +250,51 @@ async function performLogin(username, password) {
         const result = await response.json();
         
         if (response.status === 200 && result.access_token) {
+            // Salva Token
             localStorage.setItem("jwt_token", result.access_token);
             localStorage.setItem("refresh_token", result.refresh_token);
             localStorage.setItem("username", result.username);
-            const payload = JSON.parse(atob(result.access_token.split('.')[1]));
-            localStorage.setItem("user_id", payload.id);
-
+            
+            // --- RECUPERAÇÃO DA SEGURANÇA ---
             if (result.master_key_recovery) {
-                console.log("Recuperando Chave Mestra...");
+                console.log("🔐 Tentando descriptografar Chave Mestra...");
                 const decryptedMasterKey = await decryptDataWithPass(result.master_key_recovery, password);
                 
                 if (decryptedMasterKey) {
-                    localStorage.setItem("local_master_key", decryptedMasterKey);
-                    console.log("Chave Mestra recuperada e salva com sucesso!");
+                    console.log("✅ Chave Mestra RECUPERADA! Salvando em Cookie seguro...");
+                    setCookie("local_master_key", decryptedMasterKey, 7); // Salva por 7 dias
                 } else {
-                    console.error("Senha correta para login, mas falha ao descriptografar Chave Mestra (pode ser chave antiga).");
+                    console.error("❌ ERRO CRÍTICO: Senha correta, mas falha ao abrir o cofre da Chave Mestra. (Chaves antigas?)");
+                    alert("Aviso: Sua senha funcionou, mas suas chaves de criptografia antigas não puderam ser desbloqueadas. Você precisará gerar novas chaves no Perfil.");
                 }
+            } else {
+                console.warn("⚠️ Nenhuma chave mestra encontrada no servidor (Conta nova ou sem chaves).");
             }
             
             updateLoginStatus(); 
-            await fetchAndCacheKeys();
+            await fetchAndCacheKeys(); // Busca as chaves PGP
             await checkCharacterSetup();
+            
             closeModal('login-modal'); 
             closeModal('register-modal');
             document.getElementById('login-form')?.reset(); 
             startInactivityTimer(); 
             
         } else if (response.status === 200 && result['2fa_required'] === true) {
-            console.log("API retornou 2fa_required. Abrindo modal 2FA...");
+            console.log("🔒 2FA Solicitado...");
             closeModal('login-modal');
             const userHidden = document.getElementById('2fa-login-username');
             const passHidden = document.getElementById('2fa-login-password');
             if(userHidden) userHidden.value = username;
             if(passHidden) passHidden.value = password;
-            document.getElementById('2fa-login-error').textContent = '';
             openModal('2fa-login-modal');
-        } else { throw new Error(result.detail || `Erro ${response.status}`); }
-    } catch (error) { console.error("Erro performLogin:", error); alert(`Erro: ${error.message}`); }
+        } else { 
+            throw new Error(result.detail || `Erro ${response.status}`); 
+        }
+    } catch (error) { 
+        console.error("Erro Login:", error); 
+        alert(`Erro: ${error.message}`); 
+    }
 }
 
 async function checkCharacterSetup() {

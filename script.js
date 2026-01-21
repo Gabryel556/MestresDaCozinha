@@ -17,6 +17,7 @@ let myPrivateKeyObj = null;
 let myPublicKeyStr = null;
 let currentChatMode = 'cbc';
 let chatSocketIsConnecting = false;
+let secureChatInstance = null;
 
 /**
  * Wrapper 'fetch' personalizado para adicionar cabeçalhos padrão da API e do Ngrok.
@@ -151,6 +152,199 @@ async function aesCtrDecrypt(ciphertext, ivBase64, key) {
     );
 
     return new TextDecoder().decode(decrypted);
+}
+
+class SecureChat {
+    constructor(userId) {
+        this.userId = userId;
+        this.keys = { c2s: null, s2c: null }; // Chaves de sessão
+        this.seq = { out: 0n, in: 0n };       // Contadores (BigInt)
+    }
+
+    // Auxiliares de conversão
+    buf2hex(buffer) { return [...new Uint8Array(buffer)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+    hex2buf(hex) { return new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16))); }
+    uuidToBytes(uuid) { return new Uint8Array(uuid.replace(/-/g, '').match(/.{1,2}/g).map(b => parseInt(b, 16))); }
+
+    async init() {
+        console.log("🔒 Iniciando Handshake Seguro...");
+        
+        // 1. Baixar chave RSA do servidor
+        const rsaRes = await fetch(`${API_URL}/auth/server-key`);
+        const rsaData = await rsaRes.json();
+        const rsaKey = await this.importRsaKey(rsaData.rsa_public_key);
+
+        // 2. Gerar meu par ECDH (Efêmero)
+        const myPair = await window.crypto.subtle.generateKey(
+            { name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]
+        );
+        const myPubRaw = await window.crypto.subtle.exportKey("raw", myPair.publicKey);
+
+        // 3. Enviar ao servidor
+        const res = await fetch(`${API_URL}/auth/handshake`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                client_id: this.userId, 
+                client_public_key_hex: this.buf2hex(myPubRaw) 
+            })
+        });
+        const data = await res.json();
+
+        // 4. Verificar Assinatura RSA (Crítico para Autenticidade)
+        const serverPub = this.hex2buf(data.server_ephemeral_public_hex);
+        const salt = this.hex2buf(data.salt_hex);
+        const signature = this.hex2buf(data.signature_hex);
+        const myIdBytes = this.uuidToBytes(this.userId);
+
+        // O que o servidor assinou: server_pub + client_id + client_pub + salt
+        const dataToVerify = new Uint8Array([...serverPub, ...myIdBytes, ...new Uint8Array(myPubRaw), ...salt]);
+        
+        const valid = await window.crypto.subtle.verify(
+            { name: "RSA-PSS", saltLength: 32 }, rsaKey, signature, dataToVerify
+        );
+
+        if (!valid) throw new Error("🚨 ALERTA: Assinatura do servidor FALHOU! Possível ataque Man-in-the-Middle.");
+
+        // 5. Derivar Chaves (HKDF)
+        const serverKey = await window.crypto.subtle.importKey("raw", serverPub, { name: "ECDH", namedCurve: "P-256" }, false, []);
+        const sharedSecret = await window.crypto.subtle.deriveBits({ name: "ECDH", public: serverKey }, myPair.privateKey, 256);
+        await this.deriveSessionKeys(sharedSecret, salt);
+        
+        console.log("✅ Sessão criptografada estabelecida.");
+    }
+
+    async deriveSessionKeys(Z, salt) {
+        // HKDF simplificado usando Web Crypto HMAC
+        const importHmac = (b) => window.crypto.subtle.importKey("raw", b, {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+        
+        // Extract
+        const saltKey = await importHmac(salt);
+        const prk = await window.crypto.subtle.sign("HMAC", saltKey, Z);
+        const prkKey = await importHmac(prk);
+
+        // Expand
+        const expand = async (label) => {
+            const info = new Uint8Array([...new TextEncoder().encode(label), 0x01]); // label + counter
+            const raw = await window.crypto.subtle.sign("HMAC", prkKey, info);
+            return window.crypto.subtle.importKey("raw", raw.slice(0, 16), "AES-GCM", false, ["encrypt", "decrypt"]);
+        };
+
+        this.keys.c2s = await expand("c2s");
+        this.keys.s2c = await expand("s2c");
+    }
+
+    async importRsaKey(pem) {
+        const b64 = pem.replace(/-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----|\s/g, "");
+        const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        return window.crypto.subtle.importKey("spki", bin, { name: "RSA-PSS", hash: "SHA-256" }, false, ["verify"]);
+    }
+
+    async encrypt(text, targetUuid) {
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encoded = new TextEncoder().encode(text);
+        
+        // Seq (8 bytes Big Endian)
+        const seqBuf = new DataView(new ArrayBuffer(8));
+        seqBuf.setBigUint64(0, this.seq.out++, false); // Big Endian
+        const seqBytes = new Uint8Array(seqBuf.buffer);
+
+        const sender = this.uuidToBytes(this.userId);
+        const recipient = this.uuidToBytes(targetUuid);
+        const aad = new Uint8Array([...sender, ...recipient, ...seqBytes]);
+
+        const ciphertext = await window.crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv, additionalData: aad },
+            this.keys.c2s,
+            encoded
+        );
+
+        return new Uint8Array([...iv, ...sender, ...recipient, ...seqBytes, ...new Uint8Array(ciphertext)]);
+    }
+
+    async decrypt(buffer) {
+        const arr = new Uint8Array(buffer);
+        // Header de 52 bytes
+        const iv = arr.slice(0, 12);
+        const sender = arr.slice(12, 28);
+        const recipient = arr.slice(28, 44);
+        const seqBytes = arr.slice(44, 52);
+        const ciphertext = arr.slice(52);
+
+        // Validar Seq (Anti-replay simples)
+        const seqView = new DataView(seqBytes.buffer);
+        const seqNum = seqView.getBigUint64(0, false);
+        if (seqNum < this.seq.in) console.warn("Pacote antigo recebido.");
+        this.seq.in = seqNum + 1n;
+
+        const aad = new Uint8Array([...sender, ...recipient, ...seqBytes]);
+        
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: iv, additionalData: aad },
+            this.keys.s2c,
+            ciphertext
+        );
+        return new TextDecoder().decode(decrypted);
+    }
+}
+
+async function startSecureChat() {
+    const userId = localStorage.getItem("user_id");
+    if (!userId) return;
+
+    secureChatInstance = new SecureChat(userId);
+    try {
+        await secureChatInstance.init();
+        connectChatWebSocket(); // Só conecta no socket APÓS o handshake
+    } catch (e) {
+        console.error("Erro fatal na segurança:", e);
+        alert("Falha ao iniciar chat seguro. Verifique o console.");
+    }
+}
+
+function connectChatWebSocket() {
+    const userId = localStorage.getItem("user_id");
+    if (!userId || !secureChatInstance) return;
+
+    // Nova URL com user_id
+    const wsUrl = API_URL.replace("http", "ws") + `/ws/chat/${userId}`; 
+    console.log("Conectando ao WS:", wsUrl);
+
+    chatSocket = new WebSocket(wsUrl);
+    chatSocket.binaryType = "arraybuffer"; // CRÍTICO: Receber binário, não texto!
+
+    chatSocket.onopen = () => console.log("WS Conectado");
+    
+    chatSocket.onmessage = async (event) => {
+        try {
+            // Decriptar mensagem recebida
+            const text = await secureChatInstance.decrypt(event.data);
+            console.log("Recebido:", text);
+            // TODO: Chame aqui sua função visual, ex: addMessageToChatWindow(text, ...)
+        } catch (e) {
+            console.error("Mensagem ignorada (erro de descriptografia):", e);
+        }
+    };
+}
+
+async function handleSendChatMessage(e) {
+    e.preventDefault();
+    const input = document.getElementById("chat-message-input");
+    const msg = input.value;
+    const targetId = currentChatTargetId; // Certifique-se que essa variável tem o UUID do destino
+
+    if (!msg || !targetId || !secureChatInstance) return;
+
+    try {
+        // Encriptar e enviar
+        const packet = await secureChatInstance.encrypt(msg, targetId);
+        chatSocket.send(packet);
+        input.value = "";
+        console.log("Mensagem segura enviada.");
+        // TODO: Adicionar visualmente no seu chat como "Enviado"
+    } catch (err) {
+        console.error("Erro ao enviar:", err);
+    }
 }
 
 async function deriveKeyFromPassword(password, salt) {
@@ -3505,6 +3699,20 @@ document.addEventListener('DOMContentLoaded', () => {
             startPrivateChat(targetId, targetName);
         });
     }
+    const legacyKeys = [
+        "pgp_private_key", 
+        "pgp_public_key", 
+        "chat_private_key", 
+        "chat_public_key",
+        "saved_passphrase"
+    ];
+
+    legacyKeys.forEach(key => {
+        if (localStorage.getItem(key)) {
+            console.log(`🧹 Removendo chave antiga: ${key}`);
+            localStorage.removeItem(key);
+        }
+    });
 
     const pgpUnlockForm = document.getElementById('pgp-unlock-form');
     if (pgpUnlockForm) {
@@ -3809,8 +4017,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startInactivityTimer();
         startPresenceHeartbeat();
         checkCharacterSetup();
-        passiveKeyRestoration();
-        initializeChatCrypto();
+        startSecureChat();
         setTimeout(() => { 
             if (!myPrivateKeyObj && localStorage.getItem("pgp_private_key")) {
                  openModal('pgp-unlock-modal');

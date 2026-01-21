@@ -9,7 +9,6 @@ let current2FASecret = null;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 let currentLanguage = localStorage.getItem('preferred_language') || 'pt';
 let featuredItems = [];
-let chatSocket = null;
 let activeChatRoomId = null;
 let currentChatTargetId = null;
 let currentChatType = null;
@@ -18,6 +17,7 @@ let myPublicKeyStr = null;
 let currentChatMode = 'cbc';
 let chatSocketIsConnecting = false;
 let secureChatInstance = null;
+let chatSocket = null;
 
 /**
  * Wrapper 'fetch' personalizado para adicionar cabeçalhos padrão da API e do Ngrok.
@@ -265,15 +265,31 @@ class SecureChat {
 
 async function startSecureChat() {
     const userId = localStorage.getItem("user_id");
-    if (!userId) return;
+    
+    if (!userId) {
+        console.warn("⚠️ Tentativa de iniciar chat sem estar logado.");
+        return;
+    }
 
+    console.log(`🚀 Iniciando protocolo de segurança para User ID: ${userId}`);
+
+    // Instancia a classe
     secureChatInstance = new SecureChat(userId);
+
     try {
-        await secureChatInstance.init();
-        connectChatWebSocket(); // Só conecta no socket APÓS o handshake
+        // 1. OBRIGATÓRIO: Aguarda o Handshake terminar antes de qualquer coisa
+        await secureChatInstance.init(); 
+        
+        console.log("✅ Handshake concluído. Chaves trocadas. Conectando WebSocket...");
+        
+        // 2. SÓ AGORA conecta o WebSocket
+        connectChatWebSocket(); 
+
     } catch (e) {
-        console.error("Erro fatal na segurança:", e);
-        alert("Falha ao iniciar chat seguro. Verifique o console.");
+        console.error("❌ ERRO FATAL NA SEGURANÇA:", e);
+        // Opcional: Mostrar erro visual para o usuário
+        const chatContainer = document.querySelector('.chat-messages');
+        if(chatContainer) chatContainer.innerHTML = `<div class="error-msg">Falha na conexão segura. Recarregue a página.</div>`;
     }
 }
 
@@ -281,23 +297,51 @@ function connectChatWebSocket() {
     const userId = localStorage.getItem("user_id");
     if (!userId || !secureChatInstance) return;
 
-    // Nova URL com user_id
-    const wsUrl = API_URL.replace("http", "ws") + `/ws/chat/${userId}`; 
-    console.log("Conectando ao WS:", wsUrl);
+    // Lógica robusta para URL do WebSocket (Suporta HTTP e HTTPS/Ngrok)
+    let wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Se estiver usando API_URL definida manualmente:
+    if (API_URL.includes("https://")) wsProtocol = "wss:";
+    if (API_URL.includes("http://")) wsProtocol = "ws:";
+    
+    const cleanUrl = API_URL.replace(/^https?:\/\//, ''); // Remove protocolo http/s
+    const wsUrl = `${wsProtocol}//${cleanUrl}/ws/chat/${userId}`;
+
+    console.log(`🔌 Tentando conectar WebSocket em: ${wsUrl}`);
+
+    // Fecha conexão anterior se existir
+    if (chatSocket) {
+        chatSocket.close();
+    }
 
     chatSocket = new WebSocket(wsUrl);
-    chatSocket.binaryType = "arraybuffer"; // CRÍTICO: Receber binário, não texto!
+    chatSocket.binaryType = "arraybuffer"; // ESSENCIAL PARA CRIPTOGRAFIA
 
-    chatSocket.onopen = () => console.log("WS Conectado");
-    
+    chatSocket.onopen = () => {
+        console.log("🟢 WebSocket Conectado e Seguro!");
+        // Opcional: Reabilitar botão de enviar
+    };
+
+    chatSocket.onclose = (event) => {
+        console.warn(`🔴 WebSocket desconectado. Código: ${event.code}. Motivo: ${event.reason}`);
+        if (event.code === 4003) {
+            console.error("⛔ Servidor rejeitou a conexão: Handshake não encontrado.");
+        }
+    };
+
+    chatSocket.onerror = (error) => {
+        console.error("⚠️ Erro no WebSocket:", error);
+    };
+
     chatSocket.onmessage = async (event) => {
         try {
-            // Decriptar mensagem recebida
             const text = await secureChatInstance.decrypt(event.data);
-            console.log("Recebido:", text);
-            // TODO: Chame aqui sua função visual, ex: addMessageToChatWindow(text, ...)
+            if(text) {
+                console.log("📩 Recebido:", text);
+                // AQUI: Chame a função que desenha a mensagem na tela
+                // ex: appendMessageToUI(text, 'received');
+            }
         } catch (e) {
-            console.error("Mensagem ignorada (erro de descriptografia):", e);
+            console.error("Ignorando mensagem corrompida/antiga:", e);
         }
     };
 }

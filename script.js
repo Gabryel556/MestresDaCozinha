@@ -157,134 +157,109 @@ async function aesCtrDecrypt(ciphertext, ivBase64, key) {
 class SecureChat {
     constructor(userId) {
         this.userId = userId;
-        this.keys = { c2s: null, s2c: null }; // Chaves de sessão
-        this.seq = { out: 0n, in: 0n };       // Contadores (BigInt)
+        this.keys = { c2s: null, s2c: null };
+        this.seq = { out: 0n, in: 0n };
     }
 
-    // Auxiliares de conversão
-    buf2hex(buffer) { return [...new Uint8Array(buffer)].map(x => x.toString(16).padStart(2, '0')).join(''); }
-    hex2buf(hex) { return new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16))); }
-    uuidToBytes(uuid) { return new Uint8Array(uuid.replace(/-/g, '').match(/.{1,2}/g).map(b => parseInt(b, 16))); }
+    // --- UTILITÁRIOS ---
+    buf2hex(b) { return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join(''); }
+    hex2buf(h) { return new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b, 16))); }
+    
+    // NOVO: Preenche o ID numérico com zeros até 16 bytes
+    padId(id) {
+        const encoder = new TextEncoder();
+        const idStr = String(id);
+        const bytes = encoder.encode(idStr);
+        const padded = new Uint8Array(16);
+        padded.set(bytes.slice(0, 16));
+        return padded;
+    }
 
+    // --- HANDSHAKE ---
     async init() {
-        console.log("🔒 Iniciando Handshake Seguro...");
-        
-        // 1. Baixar chave RSA do servidor
+        console.log("🔒 Iniciando Handshake...");
         const rsaRes = await fetch(`${API_URL}/auth/server-key`);
         const rsaData = await rsaRes.json();
-        const rsaKey = await this.importRsaKey(rsaData.rsa_public_key);
+        
+        // Importar RSA
+        const pemHeader = "-----BEGIN PUBLIC KEY-----";
+        const pemFooter = "-----END PUBLIC KEY-----";
+        const pemContents = rsaData.rsa_public_key.substring(rsaData.rsa_public_key.indexOf(pemHeader) + pemHeader.length, rsaData.rsa_public_key.indexOf(pemFooter)).replace(/\s/g, '');
+        const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+        const rsaKey = await window.crypto.subtle.importKey("spki", binaryDer, { name: "RSA-PSS", hash: "SHA-256" }, false, ["verify"]);
 
-        // 2. Gerar meu par ECDH (Efêmero)
-        const myPair = await window.crypto.subtle.generateKey(
-            { name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]
-        );
+        // Gerar ECDH Cliente
+        const myPair = await window.crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
         const myPubRaw = await window.crypto.subtle.exportKey("raw", myPair.publicKey);
 
-        // 3. Enviar ao servidor
+        // Enviar para API
         const res = await fetch(`${API_URL}/auth/handshake`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                client_id: this.userId, 
-                client_public_key_hex: this.buf2hex(myPubRaw) 
-            })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ client_id: this.userId, client_public_key_hex: this.buf2hex(myPubRaw) })
         });
         const data = await res.json();
 
-        // 4. Verificar Assinatura RSA (Crítico para Autenticidade)
+        // Verificar Assinatura (Usando padId)
         const serverPub = this.hex2buf(data.server_ephemeral_public_hex);
         const salt = this.hex2buf(data.salt_hex);
-        const signature = this.hex2buf(data.signature_hex);
-        const myIdBytes = this.uuidToBytes(this.userId);
+        const sig = this.hex2buf(data.signature_hex);
+        const myIdPadded = this.padId(this.userId); // <--- CRÍTICO
 
-        // O que o servidor assinou: server_pub + client_id + client_pub + salt
-        const dataToVerify = new Uint8Array([...serverPub, ...myIdBytes, ...new Uint8Array(myPubRaw), ...salt]);
+        const verifyData = new Uint8Array([...serverPub, ...myIdPadded, ...new Uint8Array(myPubRaw), ...salt]);
+        const valid = await window.crypto.subtle.verify({ name: "RSA-PSS", saltLength: 32 }, rsaKey, sig, verifyData);
         
-        const valid = await window.crypto.subtle.verify(
-            { name: "RSA-PSS", saltLength: 32 }, rsaKey, signature, dataToVerify
-        );
+        if (!valid) throw new Error("Assinatura do servidor INVÁLIDA!");
 
-        if (!valid) throw new Error("🚨 ALERTA: Assinatura do servidor FALHOU! Possível ataque Man-in-the-Middle.");
-
-        // 5. Derivar Chaves (HKDF)
-        const serverKey = await window.crypto.subtle.importKey("raw", serverPub, { name: "ECDH", namedCurve: "P-256" }, false, []);
-        const sharedSecret = await window.crypto.subtle.deriveBits({ name: "ECDH", public: serverKey }, myPair.privateKey, 256);
-        await this.deriveSessionKeys(sharedSecret, salt);
+        // Derivar Chaves
+        const serverKey = await window.crypto.subtle.importKey("raw", serverPub, {name:"ECDH", namedCurve:"P-256"}, false, []);
+        const shared = await window.crypto.subtle.deriveBits({name:"ECDH", public:serverKey}, myPair.privateKey, 256);
         
-        console.log("✅ Sessão criptografada estabelecida.");
-    }
-
-    async deriveSessionKeys(Z, salt) {
-        // HKDF simplificado usando Web Crypto HMAC
+        // HKDF (Simplificado para JS WebCrypto)
         const importHmac = (b) => window.crypto.subtle.importKey("raw", b, {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
-        
-        // Extract
         const saltKey = await importHmac(salt);
-        const prk = await window.crypto.subtle.sign("HMAC", saltKey, Z);
+        const prk = await window.crypto.subtle.sign("HMAC", saltKey, shared);
         const prkKey = await importHmac(prk);
-
-        // Expand
-        const expand = async (label) => {
-            const info = new Uint8Array([...new TextEncoder().encode(label), 0x01]); // label + counter
+        const expand = async (lbl) => {
+            const info = new Uint8Array([...new TextEncoder().encode(lbl), 0x01]);
             const raw = await window.crypto.subtle.sign("HMAC", prkKey, info);
-            return window.crypto.subtle.importKey("raw", raw.slice(0, 16), "AES-GCM", false, ["encrypt", "decrypt"]);
+            return window.crypto.subtle.importKey("raw", raw.slice(0,16), "AES-GCM", false, ["encrypt", "decrypt"]);
         };
-
+        
         this.keys.c2s = await expand("c2s");
         this.keys.s2c = await expand("s2c");
+        console.log("✅ Chat Seguro Pronto");
     }
 
-    async importRsaKey(pem) {
-        const b64 = pem.replace(/-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----|\s/g, "");
-        const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-        return window.crypto.subtle.importKey("spki", bin, { name: "RSA-PSS", hash: "SHA-256" }, false, ["verify"]);
-    }
-
-    async encrypt(text, targetUuid) {
+    // --- CRIPTOGRAFIA ---
+    async encrypt(text, targetId) {
         const iv = window.crypto.getRandomValues(new Uint8Array(12));
         const encoded = new TextEncoder().encode(text);
         
-        // Seq (8 bytes Big Endian)
         const seqBuf = new DataView(new ArrayBuffer(8));
-        seqBuf.setBigUint64(0, this.seq.out++, false); // Big Endian
-        const seqBytes = new Uint8Array(seqBuf.buffer);
+        seqBuf.setBigUint64(0, this.seq.out++, false);
+        const seq = new Uint8Array(seqBuf.buffer);
 
-        const sender = this.uuidToBytes(this.userId);
-        const recipient = this.uuidToBytes(targetUuid);
-        const aad = new Uint8Array([...sender, ...recipient, ...seqBytes]);
+        const sender = this.padId(this.userId);
+        const recipient = this.padId(targetId || 0); // Tratar target nulo
+        const aad = new Uint8Array([...sender, ...recipient, ...seq]);
 
-        const ciphertext = await window.crypto.subtle.encrypt(
-            { name: "AES-GCM", iv: iv, additionalData: aad },
-            this.keys.c2s,
-            encoded
-        );
-
-        return new Uint8Array([...iv, ...sender, ...recipient, ...seqBytes, ...new Uint8Array(ciphertext)]);
+        const ciph = await window.crypto.subtle.encrypt({name:"AES-GCM", iv, additionalData:aad}, this.keys.c2s, encoded);
+        return new Uint8Array([...iv, ...sender, ...recipient, ...seq, ...new Uint8Array(ciph)]);
     }
-
-    async decrypt(buffer) {
-        const arr = new Uint8Array(buffer);
-        // Header de 52 bytes
-        const iv = arr.slice(0, 12);
-        const sender = arr.slice(12, 28);
-        const recipient = arr.slice(28, 44);
-        const seqBytes = arr.slice(44, 52);
-        const ciphertext = arr.slice(52);
-
-        // Validar Seq (Anti-replay simples)
-        const seqView = new DataView(seqBytes.buffer);
+    
+    async decrypt(buf) {
+        const arr = new Uint8Array(buf);
+        const iv = arr.slice(0,12), snd = arr.slice(12,28), rcp = arr.slice(28,44), seq = arr.slice(44,52), ciph = arr.slice(52);
+        
+        const seqView = new DataView(seq.buffer.slice(seq.byteOffset, seq.byteOffset + 8));
         const seqNum = seqView.getBigUint64(0, false);
-        if (seqNum < this.seq.in) console.warn("Pacote antigo recebido.");
+        if (seqNum < this.seq.in) console.warn("Replay ignorado");
         this.seq.in = seqNum + 1n;
 
-        const aad = new Uint8Array([...sender, ...recipient, ...seqBytes]);
-        
-        const decrypted = await window.crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: iv, additionalData: aad },
-            this.keys.s2c,
-            ciphertext
-        );
-        return new TextDecoder().decode(decrypted);
+        const aad = new Uint8Array([...snd, ...rcp, ...seq]);
+        const dec = await window.crypto.subtle.decrypt({name:"AES-GCM", iv, additionalData:aad}, this.keys.s2c, ciph);
+        return new TextDecoder().decode(dec);
     }
 }
 

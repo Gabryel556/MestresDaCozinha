@@ -37,18 +37,33 @@ const SecurityManager = {
     // 1. Inicializa: Busca certificado do servidor e faz handshake
     async init() {
         try {
-            console.log("🔒 Iniciando protocolo de segurança...");
-            // A. Buscar chave pública RSA do servidor
-            const certResp = await fetch(`${API_URL}/auth/server-cert-key`);
-            if(!certResp.ok) return; // Falha silenciosa se o endpoint não existir ainda
-            const certData = await certResp.json();
+            console.log("🔒 Tentando conectar em:", `${API_URL}/auth/server-cert-key`);
             
-            this.serverRsaKey = await this.importRsaKey(certData.public_key);
+            const certResp = await fetch(`${API_URL}/auth/server-cert-key`);
+            
+            // LER COMO TEXTO PRIMEIRO PARA VER O QUE VEIO
+            const textData = await certResp.text();
 
-            // B. Fazer Handshake
-            await this.performHandshake();
+            try {
+                // Tentar converter para JSON
+                const certData = JSON.parse(textData);
+                
+                // Se funcionou, segue o baile
+                this.serverRsaKey = await this.importRsaKey(certData.public_key);
+                await this.performHandshake();
+
+            } catch (jsonError) {
+                // SE DEU ERRO, MOSTRA O HTML QUE VEIO
+                console.error("❌ ERRO CRÍTICO: O servidor não retornou JSON.");
+                console.error("Conteúdo recebido (HTML):", textData.substring(0, 200)); // Mostra os primeiros 200 caracteres
+                
+                if (textData.includes("Tunnel")) {
+                    console.warn("⚠️ O Ngrok não está conseguindo falar com seu Python (Servidor Offline?)");
+                }
+            }
+
         } catch (e) {
-            console.error("⚠️ Falha na inicialização da segurança:", e);
+            console.error("⚠️ Falha na conexão:", e);
         }
     },
 

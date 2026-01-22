@@ -9,6 +9,7 @@ let current2FASecret = null;
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 let currentLanguage = localStorage.getItem('preferred_language') || 'pt';
 let featuredItems = [];
+let chatSocket = null;
 let activeChatRoomId = null;
 let currentChatTargetId = null;
 let currentChatType = null;
@@ -16,8 +17,6 @@ let myPrivateKeyObj = null;
 let myPublicKeyStr = null;
 let currentChatMode = 'cbc';
 let chatSocketIsConnecting = false;
-let secureChatInstance = null;
-let chatSocket = null;
 
 /**
  * Wrapper 'fetch' personalizado para adicionar cabeçalhos padrão da API e do Ngrok.
@@ -152,218 +151,6 @@ async function aesCtrDecrypt(ciphertext, ivBase64, key) {
     );
 
     return new TextDecoder().decode(decrypted);
-}
-
-class SecureChat {
-    constructor(userId) {
-        this.userId = userId;
-        this.keys = { c2s: null, s2c: null };
-        this.seq = { out: 0n, in: 0n };
-    }
-
-    // --- UTILITÁRIOS ---
-    buf2hex(b) { return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join(''); }
-    hex2buf(h) { return new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b, 16))); }
-    
-    // NOVO: Preenche o ID numérico com zeros até 16 bytes
-    padId(id) {
-        const encoder = new TextEncoder();
-        const idStr = String(id);
-        const bytes = encoder.encode(idStr);
-        const padded = new Uint8Array(16);
-        padded.set(bytes.slice(0, 16));
-        return padded;
-    }
-
-    // --- HANDSHAKE ---
-    async init() {
-        console.log("🔒 Iniciando Handshake...");
-        const rsaRes = await fetch(`${API_URL}/auth/server-key`);
-        const rsaData = await rsaRes.json();
-        
-        // Importar RSA
-        const pemHeader = "-----BEGIN PUBLIC KEY-----";
-        const pemFooter = "-----END PUBLIC KEY-----";
-        const pemContents = rsaData.rsa_public_key.substring(rsaData.rsa_public_key.indexOf(pemHeader) + pemHeader.length, rsaData.rsa_public_key.indexOf(pemFooter)).replace(/\s/g, '');
-        const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
-        const rsaKey = await window.crypto.subtle.importKey("spki", binaryDer, { name: "RSA-PSS", hash: "SHA-256" }, false, ["verify"]);
-
-        // Gerar ECDH Cliente
-        const myPair = await window.crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
-        const myPubRaw = await window.crypto.subtle.exportKey("raw", myPair.publicKey);
-
-        // Enviar para API
-        const res = await fetch(`${API_URL}/auth/handshake`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ client_id: this.userId, client_public_key_hex: this.buf2hex(myPubRaw) })
-        });
-        const data = await res.json();
-
-        // Verificar Assinatura (Usando padId)
-        const serverPub = this.hex2buf(data.server_ephemeral_public_hex);
-        const salt = this.hex2buf(data.salt_hex);
-        const sig = this.hex2buf(data.signature_hex);
-        const myIdPadded = this.padId(this.userId); // <--- CRÍTICO
-
-        const verifyData = new Uint8Array([...serverPub, ...myIdPadded, ...new Uint8Array(myPubRaw), ...salt]);
-        const valid = await window.crypto.subtle.verify({ name: "RSA-PSS", saltLength: 32 }, rsaKey, sig, verifyData);
-        
-        if (!valid) throw new Error("Assinatura do servidor INVÁLIDA!");
-
-        // Derivar Chaves
-        const serverKey = await window.crypto.subtle.importKey("raw", serverPub, {name:"ECDH", namedCurve:"P-256"}, false, []);
-        const shared = await window.crypto.subtle.deriveBits({name:"ECDH", public:serverKey}, myPair.privateKey, 256);
-        
-        // HKDF (Simplificado para JS WebCrypto)
-        const importHmac = (b) => window.crypto.subtle.importKey("raw", b, {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
-        const saltKey = await importHmac(salt);
-        const prk = await window.crypto.subtle.sign("HMAC", saltKey, shared);
-        const prkKey = await importHmac(prk);
-        const expand = async (lbl) => {
-            const info = new Uint8Array([...new TextEncoder().encode(lbl), 0x01]);
-            const raw = await window.crypto.subtle.sign("HMAC", prkKey, info);
-            return window.crypto.subtle.importKey("raw", raw.slice(0,16), "AES-GCM", false, ["encrypt", "decrypt"]);
-        };
-        
-        this.keys.c2s = await expand("c2s");
-        this.keys.s2c = await expand("s2c");
-        console.log("✅ Chat Seguro Pronto");
-    }
-
-    // --- CRIPTOGRAFIA ---
-    async encrypt(text, targetId) {
-        const iv = window.crypto.getRandomValues(new Uint8Array(12));
-        const encoded = new TextEncoder().encode(text);
-        
-        const seqBuf = new DataView(new ArrayBuffer(8));
-        seqBuf.setBigUint64(0, this.seq.out++, false);
-        const seq = new Uint8Array(seqBuf.buffer);
-
-        const sender = this.padId(this.userId);
-        const recipient = this.padId(targetId || 0); // Tratar target nulo
-        const aad = new Uint8Array([...sender, ...recipient, ...seq]);
-
-        const ciph = await window.crypto.subtle.encrypt({name:"AES-GCM", iv, additionalData:aad}, this.keys.c2s, encoded);
-        return new Uint8Array([...iv, ...sender, ...recipient, ...seq, ...new Uint8Array(ciph)]);
-    }
-    
-    async decrypt(buf) {
-        const arr = new Uint8Array(buf);
-        const iv = arr.slice(0,12), snd = arr.slice(12,28), rcp = arr.slice(28,44), seq = arr.slice(44,52), ciph = arr.slice(52);
-        
-        const seqView = new DataView(seq.buffer.slice(seq.byteOffset, seq.byteOffset + 8));
-        const seqNum = seqView.getBigUint64(0, false);
-        if (seqNum < this.seq.in) console.warn("Replay ignorado");
-        this.seq.in = seqNum + 1n;
-
-        const aad = new Uint8Array([...snd, ...rcp, ...seq]);
-        const dec = await window.crypto.subtle.decrypt({name:"AES-GCM", iv, additionalData:aad}, this.keys.s2c, ciph);
-        return new TextDecoder().decode(dec);
-    }
-}
-
-async function startSecureChat() {
-    const userId = localStorage.getItem("user_id");
-    
-    if (!userId) {
-        console.warn("⚠️ Tentativa de iniciar chat sem estar logado.");
-        return;
-    }
-
-    console.log(`🚀 Iniciando protocolo de segurança para User ID: ${userId}`);
-
-    // Instancia a classe
-    secureChatInstance = new SecureChat(userId);
-
-    try {
-        // 1. OBRIGATÓRIO: Aguarda o Handshake terminar antes de qualquer coisa
-        await secureChatInstance.init(); 
-        
-        console.log("✅ Handshake concluído. Chaves trocadas. Conectando WebSocket...");
-        
-        // 2. SÓ AGORA conecta o WebSocket
-        connectChatWebSocket(); 
-
-    } catch (e) {
-        console.error("❌ ERRO FATAL NA SEGURANÇA:", e);
-        // Opcional: Mostrar erro visual para o usuário
-        const chatContainer = document.querySelector('.chat-messages');
-        if(chatContainer) chatContainer.innerHTML = `<div class="error-msg">Falha na conexão segura. Recarregue a página.</div>`;
-    }
-}
-
-function connectChatWebSocket() {
-    const userId = localStorage.getItem("user_id");
-    if (!userId || !secureChatInstance) return;
-
-    // Lógica robusta para URL do WebSocket (Suporta HTTP e HTTPS/Ngrok)
-    let wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Se estiver usando API_URL definida manualmente:
-    if (API_URL.includes("https://")) wsProtocol = "wss:";
-    if (API_URL.includes("http://")) wsProtocol = "ws:";
-    
-    const cleanUrl = API_URL.replace(/^https?:\/\//, ''); // Remove protocolo http/s
-    const wsUrl = `${wsProtocol}//${cleanUrl}/ws/chat/${userId}`;
-
-    console.log(`🔌 Tentando conectar WebSocket em: ${wsUrl}`);
-
-    // Fecha conexão anterior se existir
-    if (chatSocket) {
-        chatSocket.close();
-    }
-
-    chatSocket = new WebSocket(wsUrl);
-    chatSocket.binaryType = "arraybuffer"; // ESSENCIAL PARA CRIPTOGRAFIA
-
-    chatSocket.onopen = () => {
-        console.log("🟢 WebSocket Conectado e Seguro!");
-        // Opcional: Reabilitar botão de enviar
-    };
-
-    chatSocket.onclose = (event) => {
-        console.warn(`🔴 WebSocket desconectado. Código: ${event.code}. Motivo: ${event.reason}`);
-        if (event.code === 4003) {
-            console.error("⛔ Servidor rejeitou a conexão: Handshake não encontrado.");
-        }
-    };
-
-    chatSocket.onerror = (error) => {
-        console.error("⚠️ Erro no WebSocket:", error);
-    };
-
-    chatSocket.onmessage = async (event) => {
-        try {
-            const text = await secureChatInstance.decrypt(event.data);
-            if(text) {
-                console.log("📩 Recebido:", text);
-                // AQUI: Chame a função que desenha a mensagem na tela
-                // ex: appendMessageToUI(text, 'received');
-            }
-        } catch (e) {
-            console.error("Ignorando mensagem corrompida/antiga:", e);
-        }
-    };
-}
-
-async function handleSendChatMessage(e) {
-    e.preventDefault();
-    const input = document.getElementById("chat-message-input");
-    const msg = input.value;
-    const targetId = currentChatTargetId; // Certifique-se que essa variável tem o UUID do destino
-
-    if (!msg || !targetId || !secureChatInstance) return;
-
-    try {
-        // Encriptar e enviar
-        const packet = await secureChatInstance.encrypt(msg, targetId);
-        chatSocket.send(packet);
-        input.value = "";
-        console.log("Mensagem segura enviada.");
-        // TODO: Adicionar visualmente no seu chat como "Enviado"
-    } catch (err) {
-        console.error("Erro ao enviar:", err);
-    }
 }
 
 async function deriveKeyFromPassword(password, salt) {
@@ -3718,20 +3505,6 @@ document.addEventListener('DOMContentLoaded', () => {
             startPrivateChat(targetId, targetName);
         });
     }
-    const legacyKeys = [
-        "pgp_private_key", 
-        "pgp_public_key", 
-        "chat_private_key", 
-        "chat_public_key",
-        "saved_passphrase"
-    ];
-
-    legacyKeys.forEach(key => {
-        if (localStorage.getItem(key)) {
-            console.log(`🧹 Removendo chave antiga: ${key}`);
-            localStorage.removeItem(key);
-        }
-    });
 
     const pgpUnlockForm = document.getElementById('pgp-unlock-form');
     if (pgpUnlockForm) {
@@ -4036,7 +3809,8 @@ document.addEventListener('DOMContentLoaded', () => {
         startInactivityTimer();
         startPresenceHeartbeat();
         checkCharacterSetup();
-        startSecureChat();
+        passiveKeyRestoration();
+        initializeChatCrypto();
         setTimeout(() => { 
             if (!myPrivateKeyObj && localStorage.getItem("pgp_private_key")) {
                  openModal('pgp-unlock-modal');

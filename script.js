@@ -17,11 +17,110 @@ let myPrivateKeyObj = null;
 let myPublicKeyStr = null;
 let currentChatMode = 'cbc';
 let chatSocketIsConnecting = false;
-let secureSession = {
-    sessionId: null,
-    keyC2S: null, // Chave Client -> Server (AES-128)
-    keyS2C: null, // Chave Server -> Client (AES-128)
-    serverRsaPubKey: null // Chave pública RSA do servidor para validar assinaturas
+
+const SecurityManager = {
+    serverRsaKey: null,
+    sessionKeys: null,
+
+    // Converte ArrayBuffer para Hex
+    buf2hex: (buffer) => { 
+        return Array.from(new Uint8Array(buffer))
+            .map(x => x.toString(16).padStart(2, '0'))
+            .join(''); 
+    },
+    
+    // Converte Hex para Uint8Array
+    hex2buf: (hexString) => {
+        return new Uint8Array(hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    },
+
+    // 1. Inicializa: Busca certificado do servidor e faz handshake
+    async init() {
+        try {
+            console.log("🔒 Iniciando protocolo de segurança...");
+            // A. Buscar chave pública RSA do servidor
+            const certResp = await fetch(`${API_URL}/auth/server-cert-key`);
+            if(!certResp.ok) return; // Falha silenciosa se o endpoint não existir ainda
+            const certData = await certResp.json();
+            
+            this.serverRsaKey = await this.importRsaKey(certData.public_key);
+
+            // B. Fazer Handshake
+            await this.performHandshake();
+        } catch (e) {
+            console.error("⚠️ Falha na inicialização da segurança:", e);
+        }
+    },
+
+    async importRsaKey(pem) {
+        // Limpa cabeçalhos PEM e quebras de linha
+        const b64 = pem.replace(/-----(BEGIN|END) PUBLIC KEY-----/g, "").replace(/\s/g, "");
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        
+        return window.crypto.subtle.importKey(
+            "spki", bytes,
+            { name: "RSASSA-PSS", hash: "SHA-256" },
+            true, ["verify"]
+        );
+    },
+
+    async performHandshake() {
+        const token = localStorage.getItem("jwt_token");
+        if (!token) return;
+
+        // A. Gerar par ECDH do cliente
+        const keyPair = await window.crypto.subtle.generateKey(
+            { name: "ECDH", namedCurve: "P-256" },
+            true, ["deriveBits"]
+        );
+
+        // Exportar chave pública para enviar
+        const rawPub = await window.crypto.subtle.exportKey("raw", keyPair.publicKey);
+        const clientHex = this.buf2hex(rawPub);
+
+        // B. Enviar ao servidor
+        const resp = await fetch(`${API_URL}/auth/handshake`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+            body: JSON.stringify({ client_pub_key_hex: clientHex })
+        });
+
+        if (!resp.ok) throw new Error("Servidor rejeitou handshake");
+        const data = await resp.json();
+
+        // C. Validar Assinatura RSA (Autenticidade do Servidor)
+        const serverPubBuf = this.hex2buf(data.server_pub_key_hex);
+        const saltBuf = this.hex2buf(data.salt_hex);
+        const sigBuf = this.hex2buf(data.signature_hex);
+
+        // Pegar ID do usuário do token (para reconstruir o que foi assinado)
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const userIdStr = String(payload.sub || payload.user_id); 
+        const userIdBuf = new TextEncoder().encode(userIdStr);
+
+        // Concatenar dados: server_pub + user_id + salt
+        const dataToVerify = new Uint8Array(serverPubBuf.length + userIdBuf.length + saltBuf.length);
+        dataToVerify.set(serverPubBuf);
+        dataToVerify.set(userIdBuf, serverPubBuf.length);
+        dataToVerify.set(saltBuf, serverPubBuf.length + userIdBuf.length);
+
+        const isValid = await window.crypto.subtle.verify(
+            { name: "RSASSA-PSS", saltLength: 32 }, // Salt length max usually corresponds to hash len
+            this.serverRsaKey,
+            sigBuf,
+            dataToVerify
+        );
+
+        if (isValid) {
+            console.log("✅ Servidor Autenticado com Sucesso (RSA Validado)!");
+            console.log("🔑 Sessão Segura ID:", data.session_id);
+            // Aqui futuramente derivaríamos as chaves AES-GCM
+        } else {
+            console.error("❌ PERIGO: Assinatura do servidor INVÁLIDA!");
+        }
+    }
 };
 
 /**
@@ -114,169 +213,6 @@ function setSafeHTML(element, text) {
         }
     });
 }
-
-const SecurityManager = {
-    
-    // 1. Inicializar: Obter certificado RSA do servidor
-    async init() {
-        const resp = await fetch(`${API_URL}/auth/server-cert`);
-        const data = await resp.json();
-        this.serverRsaPubKey = await this.importRsaKey(data.public_key);
-        console.log("Certificado RSA do Servidor carregado.");
-    },
-
-    // Importar chave RSA PEM
-    async importRsaKey(pem) {
-        const binaryDerString = window.atob(pem.replace(/-----(BEGIN|END) PUBLIC KEY-----/g, "").replace(/\n/g, ""));
-        const binaryDer = new Uint8Array([...binaryDerString].map(char => char.charCodeAt(0)));
-        return window.crypto.subtle.importKey(
-            "spki", binaryDer, 
-            { name: "RSASSA-PSS", hash: "SHA-256" }, 
-            true, ["verify"]
-        );
-    },
-
-    // 2. Executar Handshake ECDHE + HKDF
-    async performHandshake() {
-        if (!this.serverRsaPubKey) await this.init();
-
-        // A. Gerar par efêmero ECDH do Cliente (P-256)
-        const clientKeyPair = await window.crypto.subtle.generateKey(
-            { name: "ECDH", namedCurve: "P-256" },
-            true, ["deriveKey", "deriveBits"]
-        );
-
-        // Exportar chave pública para enviar
-        const clientPubRaw = await window.crypto.subtle.exportKey("raw", clientKeyPair.publicKey);
-        
-        // B. Enviar ao servidor
-        const token = localStorage.getItem("jwt_token");
-        const response = await fetch(`${API_URL}/auth/handshake`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-            body: JSON.stringify({ client_pub_key_hex: toHex(clientPubRaw) })
-        });
-
-        if (!response.ok) throw new Error("Falha no handshake");
-        const serverData = await response.json();
-
-        // C. Validar Assinatura RSA (Autenticidade)
-        const serverPubRaw = fromHex(serverData.server_pub_key_hex);
-        const salt = fromHex(serverData.salt_hex);
-        const signature = fromHex(serverData.signature_hex);
-        
-        // Recriar dados assinados: server_pub + user_id + salt
-        // Nota: Precisamos pegar o user_id do token ou contexto local para validar exatamente o que o server assinou
-        const userId = JSON.parse(atob(token.split('.')[1])).user_id; // Decodificar JWT simples para pegar ID
-        const userIdBytes = new TextEncoder().encode(String(userId));
-        
-        const dataToVerify = new Uint8Array(serverPubRaw.length + userIdBytes.length + salt.length);
-        dataToVerify.set(serverPubRaw);
-        dataToVerify.set(userIdBytes, serverPubRaw.length);
-        dataToVerify.set(salt, serverPubRaw.length + userIdBytes.length);
-
-        const isValid = await window.crypto.subtle.verify(
-            { name: "RSASSA-PSS", saltLength: 32 },
-            this.serverRsaPubKey,
-            signature,
-            dataToVerify
-        );
-
-        if (!isValid) throw new Error("ALERTA DE SEGURANÇA: Assinatura do servidor inválida! Possível ataque MitM.");
-
-        // D. Calcular Segredo Compartilhado (Z)
-        const serverEcKey = await window.crypto.subtle.importKey(
-            "raw", serverPubRaw,
-            { name: "ECDH", namedCurve: "P-256" },
-            false, []
-        );
-
-        const sharedSecretZ = await window.crypto.subtle.deriveBits(
-            { name: "ECDH", public: serverEcKey },
-            clientKeyPair.privateKey,
-            256
-        );
-
-        // E. Derivar Chaves com HKDF
-        const hkdfKey = await window.crypto.subtle.importKey("raw", sharedSecretZ, "HKDF", false, ["deriveKey"]);
-        
-        // Key C2S (Client to Server)
-        secureSession.keyC2S = await window.crypto.subtle.deriveKey(
-            { name: "HKDF", hash: "SHA-256", salt: salt, info: new TextEncoder().encode("c2s") },
-            hkdfKey,
-            { name: "AES-GCM", length: 128 },
-            false, ["encrypt"]
-        );
-
-        // Key S2C (Server to Client)
-        secureSession.keyS2C = await window.crypto.subtle.deriveKey(
-            { name: "HKDF", hash: "SHA-256", salt: salt, info: new TextEncoder().encode("s2c") },
-            hkdfKey,
-            { name: "AES-GCM", length: 128 },
-            false, ["decrypt"]
-        );
-
-        secureSession.sessionId = serverData.session_id;
-        console.log("Handshake Seguro Concluído. Sessão: " + secureSession.sessionId);
-    },
-
-    // 3. Encriptar Mensagem (AES-128-GCM)
-    async encrypt(plaintextObj) {
-        if (!secureSession.keyC2S) await this.performHandshake();
-        
-        const iv = window.crypto.getRandomValues(new Uint8Array(12)); // IV de 12 bytes recomendado para GCM
-        const encodedData = new TextEncoder().encode(JSON.stringify(plaintextObj));
-        
-        // AAD = session_id para amarrar cifragem à sessão
-        const aad = new TextEncoder().encode(secureSession.sessionId);
-
-        const ciphertextBuffer = await window.crypto.subtle.encrypt(
-            { name: "AES-GCM", iv: iv, additionalData: aad },
-            secureSession.keyC2S,
-            encodedData
-        );
-
-        // WebCrypto retorna Ciphertext + Tag juntos no final. Precisamos separar se a API exige, 
-        // mas o padrão GCM costuma ser junto. O código Python acima separa.
-        // O AES-GCM tag length padrão é 128 bits (16 bytes).
-        
-        const raw = new Uint8Array(ciphertextBuffer);
-        const tag = raw.slice(raw.length - 16);
-        const ciphertext = raw.slice(0, raw.length - 16);
-
-        return {
-            session_id: secureSession.sessionId,
-            iv_hex: toHex(iv),
-            ciphertext_hex: toHex(ciphertext),
-            tag_hex: toHex(tag)
-        };
-    },
-
-    // 4. Decriptar Mensagem (AES-128-GCM)
-    async decrypt(encryptedObj) {
-        // encryptedObj deve ter: iv_hex, ciphertext_hex, tag_hex
-        const iv = fromHex(encryptedObj.iv_hex);
-        const ciphertext = fromHex(encryptedObj.ciphertext_hex);
-        const tag = fromHex(encryptedObj.tag_hex);
-        const aad = new TextEncoder().encode(secureSession.sessionId);
-
-        // Recombinar para WebCrypto
-        const data = new Uint8Array(ciphertext.length + tag.length);
-        data.set(ciphertext);
-        data.set(tag, ciphertext.length);
-
-        const decryptedBuffer = await window.crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: iv, additionalData: aad },
-            secureSession.keyS2C,
-            data
-        );
-
-        return JSON.parse(new TextDecoder().decode(decryptedBuffer));
-    }
-};
-
-const toHex = buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-const fromHex = hex => new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
 
 let currentAesKey = null;
 
@@ -2151,32 +2087,47 @@ async function appendMessageToChat(msgData) {
     area.scrollTop = area.scrollHeight;
 }
 
-async function handleSendSecureMessage(e) {
+async function handleSendChatMessage(e) {
     e.preventDefault();
-    const input = document.getElementById('chat-message-input');
-    const msg = input.value;
-    
-    try {
-        // Criptografa usando AES-GCM e chaves da sessão HKDF
-        const securePayload = await SecurityManager.encrypt({
-            content: msg,
-            timestamp: Date.now()
-        });
+    const input = document.getElementById('chat-input-text');
+    const text = input.value.trim();
+    if (!text || !activeChatRoomId) return;
+
+    if (chatSocket === null || chatSocket.readyState !== WebSocket.OPEN) {
+        console.warn("Socket fechado. Tentando reconectar proativamente...");
+        connectChatWebSocket(); 
+        await new Promise(resolve => setTimeout(resolve, 300)); 
         
-        // Envia via WebSocket ou POST
-        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
-            chatSocket.send(JSON.stringify({
-                type: "secure_msg",
-                payload: securePayload
-            }));
+        if (chatSocket === null || chatSocket.readyState !== WebSocket.OPEN) {
+             alert("Erro: Conexão de chat perdida e falha na reconexão. Faça o login novamente.");
+             return;
         }
-        
-        input.value = '';
-    } catch (err) {
-        console.error("Erro ao enviar mensagem segura:", err);
-        // Tentar re-handshake se falhar
-        await SecurityManager.performHandshake();
     }
+
+    let finalContent = text;
+
+    if (currentChatType === 'private') {
+        if (!myPrivateKeyObj) {
+            console.log("Chave PGP não está na memória. Tentando desbloqueio automático...");
+            const unlocked = await tryUnlockKey();
+            
+            if (!unlocked) {
+                alert("Erro Crítico de Segurança: Não foi possível restaurar suas chaves de criptografia automaticamente. Por favor, faça Logout e Login novamente para restaurar seu acesso seguro.");
+                return; 
+            }
+        }
+
+        const encrypted = await encryptMessage(text, activeChatRoomId);
+        if (!encrypted) return; 
+        finalContent = encrypted;
+    }
+
+    chatSocket.send(JSON.stringify({
+        room_id: activeChatRoomId,
+        content: finalContent
+    }));
+
+    input.value = '';
 }
 
 async function initializeChatCrypto() {
@@ -3965,6 +3916,7 @@ document.addEventListener('DOMContentLoaded', () => {
         checkCharacterSetup();
         passiveKeyRestoration();
         initializeChatCrypto();
+        SecurityManager.init();
         setTimeout(() => { 
             if (!myPrivateKeyObj && localStorage.getItem("pgp_private_key")) {
                  openModal('pgp-unlock-modal');

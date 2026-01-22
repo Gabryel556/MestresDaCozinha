@@ -2142,7 +2142,7 @@ async function initializeChatCrypto() {
             
             if (hasKeyCookie) {
                 console.warn("Chat seguro detectado, mas chave bloqueada. Solicitando senha...");
-                openModal('pgp-unlock-modal');
+                // openModal('pgp-unlock-modal');
             } else {
                 console.warn("Nenhuma chave de criptografia encontrada. O chat funcionará, mas mensagens seguras estarão ilegíveis.");
             }

@@ -37,33 +37,22 @@ const SecurityManager = {
     // 1. Inicializa: Busca certificado do servidor e faz handshake
     async init() {
         try {
-            console.log("🔒 Tentando conectar em:", `${API_URL}/auth/server-cert-key`);
+            console.log("🔒 Iniciando protocolo de segurança...");
+            // Adicionamos o cabeçalho aqui
+            const certResp = await fetch(`${API_URL}/auth/server-cert-key`, {
+                headers: { "ngrok-skip-browser-warning": "true" }
+            });
             
-            const certResp = await fetch(`${API_URL}/auth/server-cert-key`);
-            
-            // LER COMO TEXTO PRIMEIRO PARA VER O QUE VEIO
-            const textData = await certResp.text();
-
-            try {
-                // Tentar converter para JSON
-                const certData = JSON.parse(textData);
-                
-                // Se funcionou, segue o baile
-                this.serverRsaKey = await this.importRsaKey(certData.public_key);
-                await this.performHandshake();
-
-            } catch (jsonError) {
-                // SE DEU ERRO, MOSTRA O HTML QUE VEIO
-                console.error("❌ ERRO CRÍTICO: O servidor não retornou JSON.");
-                console.error("Conteúdo recebido (HTML):", textData.substring(0, 200)); // Mostra os primeiros 200 caracteres
-                
-                if (textData.includes("Tunnel")) {
-                    console.warn("⚠️ O Ngrok não está conseguindo falar com seu Python (Servidor Offline?)");
-                }
+            if(!certResp.ok) {
+                console.warn("⚠️ Endpoint de certificado não respondeu (Status " + certResp.status + ")");
+                return;
             }
 
+            const certData = await certResp.json();
+            this.serverRsaKey = await this.importRsaKey(certData.public_key);
+            await this.performHandshake();
         } catch (e) {
-            console.error("⚠️ Falha na conexão:", e);
+            console.error("⚠️ Falha na inicialização da segurança:", e);
         }
     },
 
@@ -98,7 +87,11 @@ const SecurityManager = {
         // B. Enviar ao servidor
         const resp = await fetch(`${API_URL}/auth/handshake`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+            headers: { 
+                "Content-Type": "application/json", 
+                "Authorization": `Bearer ${token}`,
+                "ngrok-skip-browser-warning": "true"
+            },
             body: JSON.stringify({ client_pub_key_hex: clientHex })
         });
 

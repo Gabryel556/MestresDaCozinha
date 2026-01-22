@@ -3919,7 +3919,7 @@ document.addEventListener('DOMContentLoaded', () => {
         SecurityManager.init();
         setTimeout(() => { 
             if (!myPrivateKeyObj && localStorage.getItem("pgp_private_key")) {
-                 openModal('pgp-unlock-modal');
+                // openModal('pgp-unlock-modal');
             }
         }, 500);
     }

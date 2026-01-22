@@ -57,16 +57,20 @@ const SecurityManager = {
     },
 
     async importRsaKey(pem) {
-        // Limpa cabeçalhos PEM e quebras de linha
         const b64 = pem.replace(/-----(BEGIN|END) PUBLIC KEY-----/g, "").replace(/\s/g, "");
         const binary = atob(b64);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
         
         return window.crypto.subtle.importKey(
-            "spki", bytes,
-            { name: "RSASSA-PSS", hash: "SHA-256" },
-            true, ["verify"]
+            "spki", 
+            bytes,
+            { 
+                name: "RSASSA-PSS", 
+                hash: { name: "SHA-256" }
+            },
+            true, 
+            ["verify"]
         );
     },
 

@@ -146,6 +146,9 @@ const SecurityManager = {
  */
 async function apiFetch(endpoint, options = {}) {
     let token = localStorage.getItem("jwt_token");
+
+    options.headers = options.headers || {};
+    options.headers["ngrok-skip-browser-warning"] = "true";
     
     const getHeaders = (t) => {
         const h = new Headers();
